@@ -53,6 +53,27 @@ export type Database = {
           },
         ]
       }
+      follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       likes: {
         Row: {
           created_at: string
@@ -89,32 +110,78 @@ export type Database = {
           },
         ]
       }
+      post_tags: {
+        Row: {
+          post_id: string
+          tag_id: string
+        }
+        Insert: {
+          post_id: string
+          tag_id: string
+        }
+        Update: {
+          post_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_tags_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           content: string
           created_at: string
           id: string
           image_url: string | null
+          is_project_update: boolean | null
+          project_id: string | null
           updated_at: string
           user_id: string
+          video_url: string | null
         }
         Insert: {
           content: string
           created_at?: string
           id?: string
           image_url?: string | null
+          is_project_update?: boolean | null
+          project_id?: string | null
           updated_at?: string
           user_id: string
+          video_url?: string | null
         }
         Update: {
           content?: string
           created_at?: string
           id?: string
           image_url?: string | null
+          is_project_update?: boolean | null
+          project_id?: string | null
           updated_at?: string
           user_id?: string
+          video_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "posts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "posts_user_id_fkey"
             columns: ["user_id"]
@@ -130,7 +197,12 @@ export type Database = {
           bio: string | null
           created_at: string
           full_name: string
+          github_url: string | null
           id: string
+          linkedin_url: string | null
+          location: string | null
+          portfolio_url: string | null
+          tech_skills: string[] | null
           updated_at: string
           username: string
         }
@@ -139,7 +211,12 @@ export type Database = {
           bio?: string | null
           created_at?: string
           full_name: string
+          github_url?: string | null
           id: string
+          linkedin_url?: string | null
+          location?: string | null
+          portfolio_url?: string | null
+          tech_skills?: string[] | null
           updated_at?: string
           username: string
         }
@@ -148,9 +225,129 @@ export type Database = {
           bio?: string | null
           created_at?: string
           full_name?: string
+          github_url?: string | null
           id?: string
+          linkedin_url?: string | null
+          location?: string | null
+          portfolio_url?: string | null
+          tech_skills?: string[] | null
           updated_at?: string
           username?: string
+        }
+        Relationships: []
+      }
+      project_likes: {
+        Row: {
+          created_at: string
+          id: string
+          project_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          project_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          project_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_likes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          created_at: string
+          description: string | null
+          github_url: string | null
+          id: string
+          image_url: string | null
+          live_url: string | null
+          tech_stack: string[] | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          github_url?: string | null
+          id?: string
+          image_url?: string | null
+          live_url?: string | null
+          tech_stack?: string[] | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          github_url?: string | null
+          id?: string
+          image_url?: string | null
+          live_url?: string | null
+          tech_stack?: string[] | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      saves: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saves_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tags: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
         }
         Relationships: []
       }

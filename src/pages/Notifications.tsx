@@ -1,9 +1,27 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Heart, MessageCircle, UserPlus, Share2 } from "lucide-react";
+import { Heart, MessageCircle, UserPlus, Share2, AtSign } from "lucide-react";
 import { motion } from "framer-motion";
+import { BottomNav } from "@/components/BottomNav";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import type { User } from "@supabase/supabase-js";
 
 const Notifications = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        navigate("/auth");
+      } else {
+        setUser(session.user);
+      }
+    });
+  }, [navigate]);
+
   const notifications = [
     {
       id: 1,
@@ -60,6 +78,17 @@ const Notifications = () => {
       icon: Heart,
       iconColor: "text-red-500",
     },
+    {
+      id: 6,
+      type: "mention",
+      user: "David Lee",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=David",
+      action: "mentioned you in a comment",
+      content: "on AI Discussion thread",
+      time: "4 days ago",
+      icon: AtSign,
+      iconColor: "text-blue-500",
+    },
   ];
 
   return (
@@ -107,6 +136,8 @@ const Notifications = () => {
           </motion.div>
         ))}
       </div>
+
+      <BottomNav />
     </div>
   );
 };
