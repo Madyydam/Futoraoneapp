@@ -56,8 +56,8 @@ const Explore = () => {
       title: `Exploring ${categoryName}`,
       description: `Showing posts and projects related to ${categoryName}`,
     });
-    // You can navigate to a filtered feed or projects page
-    navigate(`/feed?category=${encodeURIComponent(categoryName)}`);
+    // Navigate to the new category page
+    navigate(`/category/${encodeURIComponent(categoryName)}`);
   };
 
   const handleTopicClick = (tag: string) => {
@@ -65,7 +65,7 @@ const Explore = () => {
       title: `#${tag}`,
       description: `Viewing all posts with #${tag}`,
     });
-    navigate(`/feed?tag=${encodeURIComponent(tag)}`);
+    navigate(`/topic/${encodeURIComponent(tag)}`);
   };
 
   const handleProjectClick = (projectTitle: string) => {
@@ -73,7 +73,7 @@ const Explore = () => {
       title: projectTitle,
       description: "Opening project details...",
     });
-    navigate("/projects");
+    navigate(`/project/${encodeURIComponent(projectTitle)}`);
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -83,7 +83,7 @@ const Explore = () => {
         title: "Searching...",
         description: `Looking for "${searchQuery}"`,
       });
-      navigate(`/feed?search=${encodeURIComponent(searchQuery)}`);
+      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
     }
   };
 

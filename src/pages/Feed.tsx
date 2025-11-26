@@ -239,7 +239,7 @@ const Feed = () => {
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold gradient-text">FutoraOne</h1>
           <div className="flex items-center gap-4">
-            <Button size="icon" variant="ghost" className="relative">
+            <Button size="icon" variant="ghost" className="relative" onClick={() => navigate("/notifications")}>
               <Bell className="w-5 h-5" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-secondary rounded-full"></span>
             </Button>
