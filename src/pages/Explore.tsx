@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Search, TrendingUp, Code, Brain, Shield, Cloud, Cpu, Blocks } from "lucide-react";
 import { motion } from "framer-motion";
+import { BottomNav } from "@/components/BottomNav";
 
 const Explore = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -150,6 +151,7 @@ const Explore = () => {
           </div>
         </section>
       </div>
+      <BottomNav />
     </div>
   );
 };

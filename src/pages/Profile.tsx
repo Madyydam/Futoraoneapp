@@ -6,10 +6,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogOut, Settings, Github, Linkedin, Globe, MapPin } from "lucide-react";
+import { LogOut, Settings, Github, Linkedin, Globe, MapPin, Edit } from "lucide-react";
 import { motion } from "framer-motion";
 import type { User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
+import { EditProfileDialog } from "@/components/EditProfileDialog";
+import { BottomNav } from "@/components/BottomNav";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -17,6 +19,8 @@ const Profile = () => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [projects, setProjects] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -34,11 +38,33 @@ const Profile = () => {
         .single();
 
       setProfile(profileData);
+
+      // Fetch user's projects
+      const { data: projectsData } = await supabase
+        .from("projects")
+        .select(`
+          *,
+          project_likes(id)
+        `)
+        .eq("user_id", user.id)
+        .order('created_at', { ascending: false });
+
+      setProjects(projectsData || []);
       setLoading(false);
     };
 
     fetchUserData();
   }, [navigate]);
+
+  const refreshProfile = async () => {
+    if (!user) return;
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+    setProfile(profileData);
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -54,14 +80,8 @@ const Profile = () => {
     );
   }
 
-  const techSkills = ["React", "TypeScript", "Python", "AI/ML", "Cloud"];
-  const userProjects = [
-    { title: "AI Chatbot", likes: 145, tech: ["Python", "TensorFlow"] },
-    { title: "E-commerce Platform", likes: 89, tech: ["React", "Node.js"] },
-  ];
-
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header with Cover */}
       <div className="relative h-32 gradient-primary" />
 
@@ -81,8 +101,13 @@ const Profile = () => {
                     {profile?.full_name?.[0] || user?.email?.[0]?.toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <Button variant="outline" size="sm" className="border-border text-foreground">
-                  <Settings size={16} className="mr-2" />
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="border-border text-foreground"
+                  onClick={() => setEditDialogOpen(true)}
+                >
+                  <Edit size={16} className="mr-2" />
                   Edit Profile
                 </Button>
               </div>
@@ -95,35 +120,51 @@ const Profile = () => {
               )}
 
               <div className="flex items-center gap-2 mt-3 text-muted-foreground text-sm">
-                <MapPin size={16} />
-                <span>San Francisco, CA</span>
+                {profile?.location && (
+                  <>
+                    <MapPin size={16} />
+                    <span>{profile.location}</span>
+                  </>
+                )}
               </div>
 
               {/* Social Links */}
               <div className="flex gap-3 mt-4">
-                <Button variant="ghost" size="sm" className="text-foreground">
-                  <Github size={18} />
-                </Button>
-                <Button variant="ghost" size="sm" className="text-foreground">
-                  <Linkedin size={18} />
-                </Button>
-                <Button variant="ghost" size="sm" className="text-foreground">
-                  <Globe size={18} />
-                </Button>
+                {profile?.github_url && (
+                  <a href={profile.github_url} target="_blank" rel="noopener noreferrer">
+                    <Button variant="ghost" size="sm" className="text-foreground">
+                      <Github size={18} />
+                    </Button>
+                  </a>
+                )}
+                {profile?.linkedin_url && (
+                  <a href={profile.linkedin_url} target="_blank" rel="noopener noreferrer">
+                    <Button variant="ghost" size="sm" className="text-foreground">
+                      <Linkedin size={18} />
+                    </Button>
+                  </a>
+                )}
+                {profile?.portfolio_url && (
+                  <a href={profile.portfolio_url} target="_blank" rel="noopener noreferrer">
+                    <Button variant="ghost" size="sm" className="text-foreground">
+                      <Globe size={18} />
+                    </Button>
+                  </a>
+                )}
               </div>
 
               {/* Stats */}
               <div className="flex gap-6 mt-4 pt-4 border-t border-border">
                 <div>
-                  <p className="text-xl font-bold text-foreground">12</p>
+                  <p className="text-xl font-bold text-foreground">{projects.length}</p>
                   <p className="text-sm text-muted-foreground">Projects</p>
                 </div>
                 <div>
-                  <p className="text-xl font-bold text-foreground">1.2K</p>
+                  <p className="text-xl font-bold text-foreground">0</p>
                   <p className="text-sm text-muted-foreground">Followers</p>
                 </div>
                 <div>
-                  <p className="text-xl font-bold text-foreground">432</p>
+                  <p className="text-xl font-bold text-foreground">0</p>
                   <p className="text-sm text-muted-foreground">Following</p>
                 </div>
               </div>
@@ -131,18 +172,20 @@ const Profile = () => {
           </Card>
 
           {/* Tech Skills */}
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <h3 className="font-semibold text-foreground mb-3">Tech Skills</h3>
-              <div className="flex flex-wrap gap-2">
-                {techSkills.map((skill) => (
-                  <Badge key={skill} variant="secondary" className="bg-secondary text-secondary-foreground">
-                    {skill}
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          {profile?.tech_skills && profile.tech_skills.length > 0 && (
+            <Card className="bg-card border-border">
+              <CardContent className="p-4">
+                <h3 className="font-semibold text-foreground mb-3">Tech Skills</h3>
+                <div className="flex flex-wrap gap-2">
+                  {profile.tech_skills.map((skill: string) => (
+                    <Badge key={skill} variant="secondary" className="bg-secondary text-secondary-foreground">
+                      {skill}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Projects Tabs */}
           <Tabs defaultValue="projects" className="w-full">
@@ -155,23 +198,38 @@ const Profile = () => {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="projects" className="space-y-3 mt-4">
-              {userProjects.map((project, index) => (
-                <Card key={index} className="bg-card border-border">
-                  <CardContent className="p-4">
-                    <h4 className="font-semibold text-foreground">{project.title}</h4>
-                    <div className="flex items-center justify-between mt-2">
-                      <div className="flex gap-2">
-                        {project.tech.map((tech) => (
-                          <Badge key={tech} variant="outline" className="text-xs border-primary text-primary">
-                            {tech}
-                          </Badge>
-                        ))}
-                      </div>
-                      <span className="text-sm text-muted-foreground">{project.likes} likes</span>
-                    </div>
+              {projects.length === 0 ? (
+                <Card className="bg-card border-border">
+                  <CardContent className="p-8 text-center">
+                    <p className="text-muted-foreground">No projects yet</p>
+                    <Button 
+                      onClick={() => navigate("/projects")} 
+                      className="mt-4 gradient-primary text-white"
+                    >
+                      Create Your First Project
+                    </Button>
                   </CardContent>
                 </Card>
-              ))}
+              ) : (
+                projects.map((project, index) => (
+                  <Card key={index} className="bg-card border-border">
+                    <CardContent className="p-4">
+                      <h4 className="font-semibold text-foreground">{project.title}</h4>
+                      <p className="text-sm text-muted-foreground mt-1">{project.description}</p>
+                      <div className="flex items-center justify-between mt-2">
+                        <div className="flex gap-2">
+                          {project.tech_stack?.slice(0, 3).map((tech: string) => (
+                            <Badge key={tech} variant="outline" className="text-xs border-primary text-primary">
+                              {tech}
+                            </Badge>
+                          ))}
+                        </div>
+                        <span className="text-sm text-muted-foreground">{project.project_likes?.length || 0} likes</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </TabsContent>
             <TabsContent value="posts" className="mt-4">
               <p className="text-center text-muted-foreground py-8">No posts yet</p>
@@ -189,6 +247,15 @@ const Profile = () => {
           </Button>
         </motion.div>
       </div>
+
+      <EditProfileDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        profile={profile}
+        onUpdate={refreshProfile}
+      />
+
+      <BottomNav />
     </div>
   );
 };
