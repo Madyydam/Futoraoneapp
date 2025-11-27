@@ -1,0 +1,151 @@
+import { useEffect, useState } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
+import { formatDistanceToNow } from "date-fns";
+import { useNavigate } from "react-router-dom";
+
+interface Profile {
+    id: string;
+    username: string;
+    full_name: string;
+    avatar_url: string | null;
+}
+
+interface Conversation {
+    id: string;
+    updated_at: string;
+    participants: Profile[];
+    last_message?: {
+        content: string;
+        created_at: string;
+        sender_id: string;
+        read_at: string | null;
+    };
+}
+
+export function ChatList({ currentUserId }: { currentUserId: string }) {
+    const [conversations, setConversations] = useState<Conversation[]>([]);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        fetchConversations();
+
+        const channel = supabase
+            .channel('public:conversations')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'conversations' },
+                () => {
+                    fetchConversations();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [currentUserId]);
+
+    const fetchConversations = async () => {
+        if (!currentUserId) return;
+
+        // This is a simplified fetch. In a real app, you'd likely have a view or a more complex query
+        // to get the last message and other participant details efficiently.
+        // For now, we'll fetch conversations the user is in.
+
+        const { data: participations, error } = await supabase
+            .from('conversation_participants')
+            .select('conversation_id')
+            .eq('user_id', currentUserId);
+
+        if (error || !participations) return;
+
+        const conversationIds = participations.map(p => p.conversation_id);
+
+        if (conversationIds.length === 0) {
+            setConversations([]);
+            return;
+        }
+
+        const { data: conversationsData, error: convError } = await supabase
+            .from('conversations')
+            .select(`
+        id,
+        updated_at,
+        conversation_participants (
+          user:profiles (
+            id,
+            username,
+            full_name,
+            avatar_url
+          )
+        )
+      `)
+            .in('id', conversationIds)
+            .order('updated_at', { ascending: false });
+
+        if (convError) return;
+
+        // Fetch last message for each conversation
+        const conversationsWithMessages = await Promise.all(conversationsData.map(async (conv: any) => {
+            const { data: messages } = await supabase
+                .from('messages')
+                .select('*')
+                .eq('conversation_id', conv.id)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+
+            // Filter out current user from participants to show the "other" person
+            const otherParticipants = conv.conversation_participants
+                .map((p: any) => p.user)
+                .filter((u: any) => u.id !== currentUserId);
+
+            return {
+                id: conv.id,
+                updated_at: conv.updated_at,
+                participants: otherParticipants,
+                last_message: messages,
+            };
+        }));
+
+        setConversations(conversationsWithMessages);
+    };
+
+    return (
+        <div className="flex flex-col space-y-2 p-4">
+            <h2 className="text-xl font-bold mb-4">Messages</h2>
+            {conversations.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No conversations yet.</p>
+            ) : (
+                conversations.map((conv) => (
+                    <div
+                        key={conv.id}
+                        onClick={() => navigate(`/messages/${conv.id}`)}
+                        className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                    >
+                        <Avatar>
+                            <AvatarImage src={conv.participants[0]?.avatar_url || undefined} />
+                            <AvatarFallback>{conv.participants[0]?.username?.[0]}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-baseline">
+                                <h3 className="font-semibold truncate">{conv.participants[0]?.full_name || conv.participants[0]?.username}</h3>
+                                {conv.last_message && (
+                                    <span className="text-xs text-muted-foreground">
+                                        {formatDistanceToNow(new Date(conv.last_message.created_at), { addSuffix: true })}
+                                    </span>
+                                )}
+                            </div>
+                            {conv.last_message && (
+                                <p className={`text-sm truncate ${!conv.last_message.read_at && conv.last_message.sender_id !== currentUserId ? 'font-bold text-foreground' : 'text-muted-foreground'}`}>
+                                    {conv.last_message.sender_id === currentUserId ? 'You: ' : ''}{conv.last_message.content}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                ))
+            )}
+        </div>
+    );
+}
