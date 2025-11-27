@@ -8,7 +8,14 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { ToastAction } from "@/components/ui/toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -17,6 +24,7 @@ const Auth = () => {
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showLoginErrorDialog, setShowLoginErrorDialog] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -81,16 +89,7 @@ const Auth = () => {
     } catch (error: any) {
       // Check for invalid login credentials
       if (isLogin && error.message && (error.message.includes("Invalid login credentials") || error.message.includes("Invalid credentials"))) {
-        toast({
-          title: "Login Failed",
-          description: "Invalid credentials. If you don't have an account, please sign up first.",
-          variant: "destructive",
-          action: (
-            <ToastAction altText="Sign Up" onClick={() => setIsLogin(false)}>
-              Sign Up
-            </ToastAction>
-          ),
-        });
+        setShowLoginErrorDialog(true);
       } else {
         toast({
           title: "Error",
@@ -218,6 +217,28 @@ const Auth = () => {
           </div>
         </div>
       </motion.div>
+
+      <Dialog open={showLoginErrorDialog} onOpenChange={setShowLoginErrorDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-xl font-bold">Login Failed</DialogTitle>
+            <DialogDescription className="text-center text-base mt-2">
+              Invalid credentials. If you don't have an account, please sign up first.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-center mt-4">
+            <Button
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg transition-colors"
+              onClick={() => {
+                setShowLoginErrorDialog(false);
+                setIsLogin(false);
+              }}
+            >
+              Sign Up
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
