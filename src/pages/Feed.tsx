@@ -255,7 +255,7 @@ const Feed = () => {
           <h1 className="text-2xl font-bold gradient-text">FutoraOne</h1>
           <div className="flex items-center gap-4">
             <Button size="icon" variant="ghost" className="relative" onClick={() => navigate("/ai-tools")}>
-              <Bot className="w-5 h-5 text-primary" />
+              <Bot className="w-6 h-6 text-primary" />
             </Button>
             <Button size="icon" variant="ghost" className="relative" onClick={() => navigate("/notifications")}>
               <Bell className="w-5 h-5" />

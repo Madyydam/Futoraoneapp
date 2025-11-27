@@ -272,22 +272,29 @@ Remember: Consistency is key! Code every day! 💪`;
                 </div>
 
                 {/* Input Area */}
-                <Card className="p-6 sticky bottom-24">
+                <Card className="p-6 sticky bottom-24 shadow-xl border-primary/20 bg-gradient-to-br from-card to-card/80 backdrop-blur-sm">
                     <div className="space-y-4">
                         <div>
-                            <label className="text-sm font-medium mb-2 block">What do you want to learn?</label>
-                            <Input
-                                placeholder="e.g., React, Python, Machine Learning, Web Development..."
+                            <label className="text-sm font-semibold mb-3 block flex items-center gap-2">
+                                <Sparkles className="w-4 h-4 text-primary" />
+                                What do you want to learn?
+                            </label>
+                            <Textarea
+                                placeholder="e.g., React, Python, Machine Learning, Web Development, Full Stack Development..."
                                 value={query}
                                 onChange={(e) => setQuery(e.target.value)}
-                                onKeyPress={(e) => e.key === "Enter" && !loading && generateRoadmap()}
-                                className="text-base"
+                                onKeyPress={(e) => e.key === "Enter" && !e.shiftKey && !loading && (e.preventDefault(), generateRoadmap())}
+                                className="text-base min-h-[80px] resize-none border-primary/30 focus:border-primary/50 bg-background/50"
+                                rows={3}
                             />
+                            <p className="text-xs text-muted-foreground mt-2">
+                                💡 Tip: Be specific! Try "React with TypeScript" or "Python for Data Science"
+                            </p>
                         </div>
                         <Button
                             onClick={generateRoadmap}
                             disabled={loading || !query.trim()}
-                            className="w-full gradient-primary text-white"
+                            className="w-full gradient-primary text-white shadow-lg hover:shadow-xl transition-all"
                             size="lg"
                         >
                             {loading ? (
