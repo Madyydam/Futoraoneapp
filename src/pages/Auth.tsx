@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -77,12 +78,26 @@ const Auth = () => {
         });
         navigate("/feed");
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: (error as Error).message,
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      // Check for invalid login credentials
+      if (isLogin && error.message && (error.message.includes("Invalid login credentials") || error.message.includes("Invalid credentials"))) {
+        toast({
+          title: "Login Failed",
+          description: "Invalid credentials. If you don't have an account, please sign up first.",
+          variant: "destructive",
+          action: (
+            <ToastAction altText="Sign Up" onClick={() => setIsLogin(false)}>
+              Sign Up
+            </ToastAction>
+          ),
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }

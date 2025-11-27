@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apply RLS Fix Migration</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .sql-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin: 20px 0;
+            white-space: pre-wrap;
+        }
+        button {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        button:hover {
+            background: #059669;
+        }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            display: none;
+        }
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+            display: block;
+        }
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+            display: block;
+        }
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #3b82f6;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Apply RLS Fix Migration</h1>
+        <p>This tool will fix the "infinite recursion" error in your chat feature.</p>
+        
+        <h3>SQL to be executed:</h3>
+        <div class="sql-box">drop policy if exists "Users can view participants of their conversations" on public.conversation_participants;
+
+create policy "Users can view conversation participants"
+  on public.conversation_participants for select
+  using (true);</div>
+
+        <button id="applyBtn" onclick="applyMigration()">Apply Migration</button>
+        
+        <div id="status" class="status"></div>
+    </div>
+
+    <script type="module">
+        window.applyMigration = async function() {
+            const statusDiv = document.getElementById('status');
+            const btn = document.getElementById('applyBtn');
+            
+            statusDiv.className = 'status info';
+            statusDiv.textContent = '⏳ Applying migration...';
+            btn.disabled = true;
+
+            try {
+                // Get Supabase URL and key from your .env file
+                // You'll need to replace these with your actual values
+                const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || prompt('Enter your VITE_SUPABASE_URL:');
+                const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || prompt('Enter your VITE_SUPABASE_PUBLISHABLE_KEY:');
+
+                if (!SUPABASE_URL || !SUPABASE_KEY) {
+                    throw new Error('Missing Supabase credentials');
+                }
+
+                const { createClient } = supabase;
+                const client = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+                // Execute the migration SQL
+                const { data, error } = await client.rpc('exec_sql', {
+                    query: `
+                        drop policy if exists "Users can view participants of their conversations" on public.conversation_participants;
+                        
+                        create policy "Users can view conversation participants"
+                          on public.conversation_participants for select
+                          using (true);
+                    `
+                });
+
+                if (error) throw error;
+
+                statusDiv.className = 'status success';
+                statusDiv.innerHTML = '✅ <strong>Migration applied successfully!</strong><br>You can now send messages in your app. Refresh your app to test.';
+            } catch (error) {
+                console.error(error);
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = `❌ <strong>Error:</strong> ${error.message}<br><br>
+                    <strong>Manual steps required:</strong><br>
+                    Please contact Lovable support with the SQL shown above, or run it manually in your Supabase dashboard.`;
+            } finally {
+                btn.disabled = false;
+            }
+        };
+    </script>
+</body>
+</html>
