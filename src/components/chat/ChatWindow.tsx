@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Send, ArrowLeft, Check, CheckCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 interface Message {
     id: string;
@@ -30,6 +31,7 @@ export function ChatWindow({ conversationId, currentUserId }: { conversationId: 
     const [isTyping, setIsTyping] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
+    const { toast } = useToast();
 
     useEffect(() => {
         fetchMessages();
@@ -111,13 +113,26 @@ export function ChatWindow({ conversationId, currentUserId }: { conversationId: 
         e.preventDefault();
         if (!newMessage.trim()) return;
 
+        console.log('Attempting to send message:', {
+            conversation_id: conversationId,
+            sender_id: currentUserId,
+            content: newMessage.trim()
+        });
+
         const { error } = await supabase.from('messages').insert({
             conversation_id: conversationId,
             sender_id: currentUserId,
             content: newMessage.trim(),
         });
 
-        if (!error) {
+        if (error) {
+            console.error('Error sending message:', error);
+            toast({
+                title: "Failed to send message",
+                description: error.message || "Please check if the conversation exists and you have permission to send messages.",
+                variant: "destructive"
+            });
+        } else {
             setNewMessage("");
             // Update conversation updated_at
             await supabase.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', conversationId);
