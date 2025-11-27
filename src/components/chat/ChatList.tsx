@@ -3,6 +3,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import { UserSearchDialog } from "./UserSearchDialog";
 
 interface Profile {
     id: string;
@@ -25,6 +28,7 @@ interface Conversation {
 
 export function ChatList({ currentUserId }: { currentUserId: string }) {
     const [conversations, setConversations] = useState<Conversation[]>([]);
+    const [searchOpen, setSearchOpen] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -48,10 +52,6 @@ export function ChatList({ currentUserId }: { currentUserId: string }) {
 
     const fetchConversations = async () => {
         if (!currentUserId) return;
-
-        // This is a simplified fetch. In a real app, you'd likely have a view or a more complex query
-        // to get the last message and other participant details efficiently.
-        // For now, we'll fetch conversations the user is in.
 
         const { data: participations, error } = await supabase
             .from('conversation_participants')
@@ -114,7 +114,19 @@ export function ChatList({ currentUserId }: { currentUserId: string }) {
 
     return (
         <div className="flex flex-col space-y-2 p-4">
-            <h2 className="text-xl font-bold mb-4">Messages</h2>
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">Messages</h2>
+                <Button size="icon" variant="ghost" onClick={() => setSearchOpen(true)}>
+                    <Plus className="h-5 w-5" />
+                </Button>
+            </div>
+
+            <UserSearchDialog
+                open={searchOpen}
+                onOpenChange={setSearchOpen}
+                currentUserId={currentUserId}
+            />
+
             {conversations.length === 0 ? (
                 <p className="text-muted-foreground text-center py-8">No conversations yet.</p>
             ) : (

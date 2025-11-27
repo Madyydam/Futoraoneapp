@@ -1,9 +1,6 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MessageCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
+import { useStartChat } from "@/hooks/useStartChat";
 
 interface StartChatButtonProps {
   userId: string;
@@ -11,83 +8,22 @@ interface StartChatButtonProps {
 }
 
 export const StartChatButton = ({ userId, currentUserId }: StartChatButtonProps) => {
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-  const { toast } = useToast();
+  const { startChat, loading } = useStartChat();
 
-  const startChat = async () => {
-    if (!currentUserId || currentUserId === userId) return;
-
-    setLoading(true);
-
-    // Check if conversation already exists
-    const { data: existingParticipations } = await supabase
-      .from("conversation_participants")
-      .select("conversation_id")
-      .eq("user_id", currentUserId);
-
-    if (existingParticipations) {
-      for (const participation of existingParticipations) {
-        const { data: otherParticipant } = await supabase
-          .from("conversation_participants")
-          .select("user_id")
-          .eq("conversation_id", participation.conversation_id)
-          .eq("user_id", userId)
-          .single();
-
-        if (otherParticipant) {
-          navigate(`/messages/${participation.conversation_id}`);
-          setLoading(false);
-          return;
-        }
-      }
-    }
-
-    // Create new conversation with client-side ID to bypass RLS select restriction
-    const newConversationId = crypto.randomUUID();
-
-    const { error: createError } = await supabase
-      .from("conversations")
-      .insert({ id: newConversationId });
-
-    if (createError) throw createError;
-
-    // Add participants
-    const { error: participantsError } = await supabase
-      .from("conversation_participants")
-      .insert([
-        { conversation_id: newConversationId, user_id: currentUserId },
-        { conversation_id: newConversationId, user_id: userId }
-      ]);
-
-    if (participantsError) throw participantsError;
-
-    navigate(`/messages/${newConversationId}`);
-  } catch (error) {
-    toast({
-      title: "Error",
-      description: error instanceof Error ? error.message : "Failed to start chat",
-      variant: "destructive"
-    });
-  } finally {
-    setLoading(false);
+  if (!currentUserId || currentUserId === userId) {
+    return null;
   }
-};
 
-if (!currentUserId || currentUserId === userId) {
-  return null;
-}
-
-return (
-  <Button
-    onClick={startChat}
-    disabled={loading}
-    variant="outline"
-    size="sm"
-    className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-  >
-    <MessageCircle className="w-4 h-4 mr-2" />
-    Message
-  </Button>
-);
+  return (
+    <Button
+      onClick={() => startChat(userId, currentUserId)}
+      disabled={loading}
+      variant="outline"
+      size="sm"
+      className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+    >
+      <MessageCircle className="w-4 h-4 mr-2" />
+      Message
+    </Button>
+  );
 };
