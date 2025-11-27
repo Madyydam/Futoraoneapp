@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { UserPlus, UserMinus } from "lucide-react";
+import { sendPushNotification } from "@/utils/notifications";
 
 interface FollowButtonProps {
     userId: string;
@@ -72,6 +73,16 @@ export const FollowButton = ({ userId, currentUserId, onFollowChange }: FollowBu
                     actor_id: currentUserId,
                     is_read: false,
                 });
+
+                // Send Push Notification
+                const { data: currentUserProfile } = await supabase
+                    .from('profiles')
+                    .select('full_name, username')
+                    .eq('id', currentUserId)
+                    .single();
+
+                const actorName = currentUserProfile?.full_name || currentUserProfile?.username || "Someone";
+                await sendPushNotification(userId, `${actorName} started following you`);
 
                 setIsFollowing(true);
                 toast({

@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Apply RLS Fix Migration</title>
+    <title>Apply OneSignal Migration</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
@@ -13,16 +14,19 @@
             padding: 20px;
             background: #f5f5f5;
         }
+
         .container {
             background: white;
             padding: 30px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
+
         h1 {
             color: #333;
             margin-bottom: 20px;
         }
+
         .sql-box {
             background: #f8f9fa;
             border: 1px solid #dee2e6;
@@ -33,6 +37,7 @@
             margin: 20px 0;
             white-space: pre-wrap;
         }
+
         button {
             background: #10b981;
             color: white;
@@ -43,31 +48,37 @@
             cursor: pointer;
             margin-top: 20px;
         }
+
         button:hover {
             background: #059669;
         }
+
         button:disabled {
             background: #9ca3af;
             cursor: not-allowed;
         }
+
         .status {
             margin-top: 20px;
             padding: 15px;
             border-radius: 6px;
             display: none;
         }
+
         .status.success {
             background: #d1fae5;
             color: #065f46;
             border: 1px solid #10b981;
             display: block;
         }
+
         .status.error {
             background: #fee2e2;
             color: #991b1b;
             border: 1px solid #ef4444;
             display: block;
         }
+
         .status.info {
             background: #dbeafe;
             color: #1e40af;
@@ -76,28 +87,25 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
-        <h1>🔧 Apply RLS Fix Migration</h1>
-        <p>This tool will fix the "infinite recursion" error in your chat feature.</p>
-        
-        <h3>SQL to be executed:</h3>
-        <div class="sql-box">drop policy if exists "Users can view participants of their conversations" on public.conversation_participants;
+        <h1>🔧 Apply OneSignal Migration</h1>
+        <p>This tool will add the <code>one_signal_player_id</code> column to your profiles table.</p>
 
-create policy "Users can view conversation participants"
-  on public.conversation_participants for select
-  using (true);</div>
+        <h3>SQL to be executed:</h3>
+        <div class="sql-box">ALTER TABLE profiles ADD COLUMN IF NOT EXISTS one_signal_player_id TEXT;</div>
 
         <button id="applyBtn" onclick="applyMigration()">Apply Migration</button>
-        
+
         <div id="status" class="status"></div>
     </div>
 
     <script type="module">
-        window.applyMigration = async function() {
+        window.applyMigration = async function () {
             const statusDiv = document.getElementById('status');
             const btn = document.getElementById('applyBtn');
-            
+
             statusDiv.className = 'status info';
             statusDiv.textContent = '⏳ Applying migration...';
             btn.disabled = true;
@@ -117,13 +125,7 @@ create policy "Users can view conversation participants"
 
                 // Execute the migration SQL
                 const { data, error } = await client.rpc('exec_sql', {
-                    query: `
-                        drop policy if exists "Users can view participants of their conversations" on public.conversation_participants;
-                        
-                        create policy "Users can view conversation participants"
-                          on public.conversation_participants for select
-                          using (true);
-                    `
+                    query: `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS one_signal_player_id TEXT;`
                 });
 
                 if (error) throw error;
@@ -142,4 +144,5 @@ create policy "Users can view conversation participants"
         };
     </script>
 </body>
+
 </html>
