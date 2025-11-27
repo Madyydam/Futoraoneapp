@@ -38,7 +38,7 @@ export const StartChatButton = ({ userId, currentUserId }: StartChatButtonProps)
 
           if (otherParticipant) {
             // Conversation exists, navigate to it
-            navigate(`/chat/${participation.conversation_id}`);
+            navigate(`/messages/${participation.conversation_id}`);
             setLoading(false);
             return;
           }
@@ -69,7 +69,7 @@ export const StartChatButton = ({ userId, currentUserId }: StartChatButtonProps)
       }
 
       // Navigate to new conversation
-      navigate(`/chat/${conversation.id}`);
+      navigate(`/messages/${conversation.id}`);
     } catch (error) {
       toast({
         title: "Error",
