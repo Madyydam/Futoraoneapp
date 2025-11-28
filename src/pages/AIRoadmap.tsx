@@ -272,7 +272,7 @@ Remember: Consistency is key! Code every day! 💪`;
                 </div>
 
                 {/* Input Area */}
-                <Card className="p-6 sticky bottom-24 shadow-xl border-primary/20 bg-gradient-to-br from-card to-card/80 backdrop-blur-sm">
+                <Card className="p-8 sticky bottom-24 shadow-2xl border-2 border-primary/30 bg-gradient-to-br from-card via-card/95 to-card/80 backdrop-blur-md">
                     <div className="space-y-4">
                         <div>
                             <label className="text-sm font-semibold mb-3 block flex items-center gap-2">
@@ -284,8 +284,8 @@ Remember: Consistency is key! Code every day! 💪`;
                                 value={query}
                                 onChange={(e) => setQuery(e.target.value)}
                                 onKeyPress={(e) => e.key === "Enter" && !e.shiftKey && !loading && (e.preventDefault(), generateRoadmap())}
-                                className="text-base min-h-[80px] resize-none border-primary/30 focus:border-primary/50 bg-background/50"
-                                rows={3}
+                                className="text-base min-h-[100px] resize-y border-2 border-primary/40 focus:border-primary/70 bg-background/50 rounded-lg p-4 transition-all"
+                                rows={4}
                             />
                             <p className="text-xs text-muted-foreground mt-2">
                                 💡 Tip: Be specific! Try "React with TypeScript" or "Python for Data Science"
@@ -294,7 +294,7 @@ Remember: Consistency is key! Code every day! 💪`;
                         <Button
                             onClick={generateRoadmap}
                             disabled={loading || !query.trim()}
-                            className="w-full gradient-primary text-white shadow-lg hover:shadow-xl transition-all"
+                            className="w-full gradient-primary text-white shadow-lg hover:shadow-2xl transition-all transform hover:scale-[1.02] active:scale-[0.98]"
                             size="lg"
                         >
                             {loading ? (
