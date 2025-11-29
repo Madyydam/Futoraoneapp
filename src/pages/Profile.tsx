@@ -15,6 +15,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { FollowersModal } from "@/components/FollowersModal";
 import { ProfileProjects } from "@/components/ProfileProjects";
 import { ProfilePosts } from "@/components/ProfilePosts";
+import { ModeToggle } from "@/components/mode-toggle";
 
 interface Profile {
   id: string;
@@ -180,6 +181,7 @@ const Profile = () => {
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex gap-2">
+                  <ModeToggle />
                   <Button
                     variant="ghost"
                     size="icon"

@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useOneSignal } from "@/hooks/useOneSignal";
 import { useCurrentUserPresence } from "@/hooks/useUserPresence";
+import { ThemeProvider } from "@/components/theme-provider";
 
 // Lazy load all page components for code splitting
 const Index = lazy(() => import("./pages/Index"));
@@ -54,42 +55,44 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Suspense fallback={<LoadingFallback />}>
-            <Routes>
-              <Route path="/" element={<Welcome />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/feed" element={<Feed />} />
-              <Route path="/create-post" element={<CreatePost />} />
-              <Route path="/explore" element={<Explore />} />
-              <Route path="/notifications" element={<Notifications />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/user/:userId" element={<UserProfile />} />
-              <Route path="/projects" element={<Projects />} />
-              <Route path="/ai-roadmap" element={<AIRoadmap />} />
-              <Route path="/ai-tools" element={<AIPage />} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/category/:category" element={<CategoryPage />} />
-              <Route path="/topic/:topic" element={<TopicPage />} />
-              <Route path="/project/:projectId" element={<ProjectDetails />} />
-              <Route path="/search" element={<SearchResults />} />
-              <Route path="/messages" element={<Messages />} />
-              <Route path="/people" element={<AllPeople />} />
-              <Route path="/chat/:conversationId" element={<Chat />} />
-              <Route path="/create-story" element={<CreateStory />} />
-              <Route path="/story/:userId" element={<StoryView />} />
-              <Route path="/profile-views" element={<ProfileViews />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
-      </TooltipProvider>
+      <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Suspense fallback={<LoadingFallback />}>
+              <Routes>
+                <Route path="/" element={<Welcome />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/feed" element={<Feed />} />
+                <Route path="/create-post" element={<CreatePost />} />
+                <Route path="/explore" element={<Explore />} />
+                <Route path="/notifications" element={<Notifications />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/user/:userId" element={<UserProfile />} />
+                <Route path="/projects" element={<Projects />} />
+                <Route path="/ai-roadmap" element={<AIRoadmap />} />
+                <Route path="/ai-tools" element={<AIPage />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/category/:category" element={<CategoryPage />} />
+                <Route path="/topic/:topic" element={<TopicPage />} />
+                <Route path="/project/:projectId" element={<ProjectDetails />} />
+                <Route path="/search" element={<SearchResults />} />
+                <Route path="/messages" element={<Messages />} />
+                <Route path="/people" element={<AllPeople />} />
+                <Route path="/chat/:conversationId" element={<Chat />} />
+                <Route path="/create-story" element={<CreateStory />} />
+                <Route path="/story/:userId" element={<StoryView />} />
+                <Route path="/profile-views" element={<ProfileViews />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 };

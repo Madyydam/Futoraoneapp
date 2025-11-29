@@ -13,6 +13,7 @@ import { FollowButton } from "@/components/FollowButton";
 import { StartChatButton } from "@/components/StartChatButton";
 import { OnlineIndicator } from "@/components/OnlineIndicator";
 import { Button } from "@/components/ui/button";
+import { ModeToggle } from "@/components/mode-toggle";
 import type { User } from "@supabase/supabase-js";
 
 interface UserProfile {
@@ -154,7 +155,10 @@ const Explore = () => {
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-card border-b border-border p-4">
-        <h1 className="text-2xl font-bold text-foreground mb-4">Explore</h1>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold text-foreground">Explore</h1>
+          <ModeToggle />
+        </div>
         <form onSubmit={handleSearch}>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
@@ -263,7 +267,7 @@ const Explore = () => {
                 <Button
                   variant="outline"
                   onClick={() => navigate("/people")}
-                  className="w-full sm:w-auto border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                  className="w-full sm:w-auto border-primary text-primary hover:bg-primary hover:text-primary-foreground animate-blink-glow"
                 >
                   See All People
                 </Button>

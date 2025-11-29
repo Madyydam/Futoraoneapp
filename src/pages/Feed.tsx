@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { User } from "@supabase/supabase-js";
 import { sendPushNotification } from "@/utils/notifications";
 import { FeedPost } from "@/components/FeedPost";
+import { ModeToggle } from "@/components/mode-toggle";
 
 interface Post {
   id: string;
@@ -34,6 +35,7 @@ const Feed = () => {
   const [user, setUser] = useState<User | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -61,6 +63,7 @@ const Feed = () => {
   useEffect(() => {
     if (user) {
       fetchPosts();
+      fetchUnreadCount();
 
       // Subscribe to realtime updates
       const channel = supabase
@@ -87,6 +90,19 @@ const Feed = () => {
             fetchPosts();
           }
         )
+
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            fetchUnreadCount();
+          }
+        )
         .subscribe();
 
       return () => {
@@ -95,7 +111,7 @@ const Feed = () => {
     }
   }, [user]);
 
-  const fetchPosts = async () => {
+  const fetchPosts = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('posts')
@@ -104,7 +120,8 @@ const Feed = () => {
           profiles(username, full_name, avatar_url),
           likes(id, user_id),
           comments(id),
-          saves(id, user_id)
+          saves(id, user_id),
+          post_reactions(id, emoji, user_id)
         `)
         .order('created_at', { ascending: false });
 
@@ -119,16 +136,25 @@ const Feed = () => {
     } finally {
       setLoading(false);
     }
+  }, [toast]);
+
+  const fetchUnreadCount = async () => {
+    if (!user) return;
+    const { count } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('is_read', false);
+    setUnreadCount(count || 0);
   };
 
-  const toggleLike = useCallback(async (postId: string) => {
+  const toggleLike = useCallback(async (postId: string, isLiked: boolean) => {
     if (!user) return;
 
     // Optimistic update
     setPosts(currentPosts => currentPosts.map(post => {
       if (post.id === postId) {
-        const hasLiked = post.likes.some(like => like.user_id === user.id);
-        if (hasLiked) {
+        if (isLiked) {
           return { ...post, likes: post.likes.filter(like => like.user_id !== user.id) };
         } else {
           return { ...post, likes: [...post.likes, { id: 'temp-id', user_id: user.id }] };
@@ -137,30 +163,45 @@ const Feed = () => {
       return post;
     }));
 
-    // Actual API call logic would need to be handled carefully with optimistic updates
-    // For now, we'll keep the original logic but wrapped in useCallback and re-fetch
-    // To properly support optimistic updates without re-fetch, we'd need more complex state management
-    // So reverting to original logic inside the callback for safety, but keeping useCallback
-
-    const post = posts.find(p => p.id === postId);
-    const hasLiked = post?.likes.some(like => like.user_id === user.id);
-
     try {
-      if (hasLiked) {
-        const likeId = post?.likes.find(like => like.user_id === user.id)?.id;
-        await supabase.from('likes').delete().eq('id', likeId);
+      if (isLiked) {
+        // We need the ID to delete, but since we don't have 'posts' dependency, we can't look it up easily from state.
+        // However, we can query the DB or assume we can find it if we had the ID.
+        // Actually, for delete we need the ID.
+        // Strategy: We can fetch the like ID from the DB for this user and post, OR we can trust the optimistic update logic
+        // but we need the ID for the API call.
+
+        // Alternative: Fetch the specific like ID first.
+        const { data: likeData } = await supabase
+          .from('likes')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('post_id', postId)
+          .single();
+
+        if (likeData) {
+          await supabase.from('likes').delete().eq('id', likeData.id);
+        }
       } else {
         await supabase.from('likes').insert({
           user_id: user.id,
           post_id: postId,
         });
 
-        if (post && post.user_id !== user.id) {
+        // We need to know the post owner to send notification. 
+        // We can't access 'post' object here without 'posts' dependency.
+        // We can fetch the post owner ID.
+        const { data: postData } = await supabase
+          .from('posts')
+          .select('user_id')
+          .eq('id', postId)
+          .single();
+
+        if (postData && postData.user_id !== user.id) {
           const actorName = user.user_metadata.full_name || user.email?.split('@')[0] || "Someone";
-          await sendPushNotification(post.user_id, `${actorName} liked your post`);
+          await sendPushNotification(postData.user_id, `${actorName} liked your post`);
         }
       }
-      // fetchPosts is called by realtime subscription
     } catch (error) {
       toast({
         title: "Error",
@@ -169,45 +210,65 @@ const Feed = () => {
       });
       fetchPosts(); // Revert on error
     }
-  }, [user, posts, toast]); // Dependency on posts makes useCallback less effective for preventing re-renders of ALL posts, but still better than inline. 
-  // Ideally we pass just the ID and let the child handle it or use a functional state update that doesn't depend on 'posts'.
+  }, [user, toast, fetchPosts]);
 
-  // Let's refine toggleLike to NOT depend on 'posts' for the API call part if possible, 
-  // but we need 'posts' to check 'hasLiked'. 
-  // Actually, we can pass 'isLiked' from the child, but the parent manages state.
-  // For true optimization, we should use a functional update for setPosts and not depend on 'posts' in the effect.
-
-  const toggleSave = useCallback(async (postId: string) => {
+  const toggleSave = useCallback(async (postId: string, isSaved: boolean) => {
     if (!user) return;
 
-    // Similar logic to toggleLike
-    const post = posts.find(p => p.id === postId);
-    const hasSaved = post?.saves?.some(save => save.user_id === user.id);
+    // Optimistic update
+    setPosts(currentPosts => currentPosts.map(post => {
+      if (post.id === postId) {
+        if (isSaved) {
+          // Remove save
+          const newSaves = post.saves ? post.saves.filter(save => save.user_id !== user.id) : [];
+          return { ...post, saves: newSaves };
+        } else {
+          // Add save
+          const newSaves = post.saves ? [...post.saves, { id: 'temp-id', user_id: user.id }] : [{ id: 'temp-id', user_id: user.id }];
+          return { ...post, saves: newSaves };
+        }
+      }
+      return post;
+    }));
 
     try {
-      if (hasSaved) {
-        const saveId = post?.saves?.find(save => save.user_id === user.id)?.id;
-        await supabase.from('saves').delete().eq('id', saveId);
+      if (isSaved) {
+        const { data: saveData } = await supabase
+          .from('saves')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('post_id', postId)
+          .single();
+
+        if (saveData) {
+          await supabase.from('saves').delete().eq('id', saveData.id);
+        }
       } else {
         await supabase.from('saves').insert({
           user_id: user.id,
           post_id: postId,
         });
 
-        if (post && post.user_id !== user.id) {
+        const { data: postData } = await supabase
+          .from('posts')
+          .select('user_id')
+          .eq('id', postId)
+          .single();
+
+        if (postData && postData.user_id !== user.id) {
           const actorName = user.user_metadata.full_name || user.email?.split('@')[0] || "Someone";
-          await sendPushNotification(post.user_id, `${actorName} saved your post`);
+          await sendPushNotification(postData.user_id, `${actorName} saved your post`);
         }
       }
-      fetchPosts();
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive",
       });
+      fetchPosts();
     }
-  }, [user, posts, toast]);
+  }, [user, toast, fetchPosts]);
 
   const handleShare = useCallback(async (post: Post) => {
     const shareData = {
@@ -278,6 +339,7 @@ const Feed = () => {
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold gradient-text">FutoraOne</h1>
           <div className="flex items-center gap-4">
+            <ModeToggle />
             <Button
               size="icon"
               variant="ghost"
@@ -292,10 +354,7 @@ const Feed = () => {
             </Button>
             <Button size="icon" variant="ghost" className="relative" onClick={() => navigate("/notifications")}>
               <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-secondary rounded-full"></span>
-            </Button>
-            <Button size="icon" variant="ghost" onClick={handleLogout}>
-              <LogOut className="w-5 h-5" />
+              <span className={`absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full ${unreadCount > 0 ? 'animate-blink-glow' : ''}`}></span>
             </Button>
           </div>
         </div>
@@ -344,6 +403,7 @@ const Feed = () => {
                 onSave={toggleSave}
                 onShare={handleShare}
                 onDelete={handleDeletePost}
+                onReactionChange={fetchPosts}
                 index={index}
               />
             ))
