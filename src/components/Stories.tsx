@@ -5,6 +5,90 @@ import { StoryViewer, Story } from "./StoryViewer";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+// Demo stories for when there are no real users
+const DEMO_STORIES = [
+    {
+        id: 'demo-1',
+        user_id: 'test-user-1',
+        username: 'Testing 1',
+        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Testing1',
+        media_url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&h=600&fit=crop', // Tech/coding
+        media_type: 'image'
+    },
+    {
+        id: 'demo-2',
+        user_id: 'test-user-2',
+        username: 'Testing 2',
+        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Testing2',
+        media_url: 'https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=400&h=600&fit=crop', // Laptop/tech
+        media_type: 'image'
+    },
+    {
+        id: 'demo-3',
+        user_id: 'test-user-3',
+        username: 'Testing 3',
+        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Testing3',
+        media_url: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=400&h=600&fit=crop', // Code on screen
+        media_type: 'image'
+    },
+    {
+        id: 'demo-4',
+        user_id: 'test-user-4',
+        username: 'Testing 4',
+        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Testing4',
+        media_url: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=600&fit=crop', // Programming
+        media_type: 'image'
+    },
+    {
+        id: 'demo-5',
+        user_id: 'test-user-5',
+        username: 'Testing 5',
+        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Testing5',
+        media_url: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=400&h=600&fit=crop', // Developer workspace
+        media_type: 'image'
+    },
+    {
+        id: 'demo-6',
+        user_id: 'test-user-6',
+        username: 'Testing 6',
+        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Testing6',
+        media_url: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400&h=600&fit=crop', // Laptop code
+        media_type: 'image'
+    },
+    {
+        id: 'demo-7',
+        user_id: 'test-user-7',
+        username: 'Testing 7',
+        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Testing7',
+        media_url: 'https://images.unsplash.com/photo-1484417894907-623942c8ee29?w=400&h=600&fit=crop', // MacBook code
+        media_type: 'image'
+    },
+    {
+        id: 'demo-8',
+        user_id: 'test-user-8',
+        username: 'Testing 8',
+        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Testing8',
+        media_url: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=400&h=600&fit=crop', // Tech abstract
+        media_type: 'image'
+    },
+    {
+        id: 'demo-9',
+        user_id: 'test-user-9',
+        username: 'Testing 9',
+        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Testing9',
+        media_url: 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=400&h=600&fit=crop', // Coding setup
+        media_type: 'image'
+    },
+    {
+        id: 'demo-10',
+        user_id: 'test-user-10',
+        username: 'Testing 10',
+        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Testing10',
+        media_url: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=400&h=600&fit=crop', // Code closeup
+        media_type: 'image'
+    }
+];
+
 export const Stories = () => {
     const [selectedUser, setSelectedUser] = useState<string | null>(null);
     const [storiesByUser, setStoriesByUser] = useState<Record<string, Story[]>>({});
@@ -89,14 +173,50 @@ export const Stories = () => {
         }
     };
 
+    // Get demo stories formatted as Story objects
+    const getDemoStories = () => {
+        const demoStoriesGrouped: Record<string, Story[]> = {};
+        const demoUsers: any[] = [];
+
+        DEMO_STORIES.forEach(story => {
+            if (!demoStoriesGrouped[story.user_id]) {
+                demoStoriesGrouped[story.user_id] = [];
+                demoUsers.push({
+                    id: story.user_id,
+                    username: story.username,
+                    avatar_url: story.avatar_url
+                });
+            }
+
+            demoStoriesGrouped[story.user_id].push({
+                id: story.id,
+                url: story.media_url,
+                type: story.media_type,
+                createdAt: new Date().toISOString(),
+                user: {
+                    id: story.user_id,
+                    username: story.username,
+                    avatar_url: story.avatar_url
+                }
+            });
+        });
+
+        return { demoStoriesGrouped, demoUsers };
+    };
+
+    // Merge real and demo stories
+    const { demoStoriesGrouped, demoUsers } = getDemoStories();
+    const allStories = { ...demoStoriesGrouped, ...storiesByUser };
+    const allUsers = [...demoUsers, ...usersWithStories];
+
     const handleUserClick = (userId: string) => {
-        if (storiesByUser[userId]) {
+        if (allStories[userId]) {
             setSelectedUser(userId);
         }
     };
 
     const handleNextUser = () => {
-        const userIds = Object.keys(storiesByUser);
+        const userIds = Object.keys(allStories);
         const currentIndex = userIds.indexOf(selectedUser!);
         if (currentIndex < userIds.length - 1) {
             setSelectedUser(userIds[currentIndex + 1]);
@@ -106,7 +226,7 @@ export const Stories = () => {
     };
 
     const handlePrevUser = () => {
-        const userIds = Object.keys(storiesByUser);
+        const userIds = Object.keys(allStories);
         const currentIndex = userIds.indexOf(selectedUser!);
         if (currentIndex > 0) {
             setSelectedUser(userIds[currentIndex - 1]);
@@ -184,13 +304,13 @@ export const Stories = () => {
                 </div>
 
                 {/* Other Users */}
-                {usersWithStories.map((user) => (
+                {allUsers.map((user) => (
                     <div
                         key={user.id}
                         className="flex flex-col items-center gap-1 min-w-[72px] cursor-pointer group"
                         onClick={() => handleUserClick(user.id)}
                     >
-                        <div className={`relative p-[2px] rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500`}>
+                        <div className={`relative p-[2px] rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 ring-2 ring-black/30 dark:ring-transparent`}>
                             <Avatar className="w-16 h-16 border-2 border-background">
                                 <AvatarImage src={user.avatar_url} />
                                 <AvatarFallback>{user.username?.[0]}</AvatarFallback>
@@ -203,9 +323,9 @@ export const Stories = () => {
                 ))}
             </div>
 
-            {selectedUser && storiesByUser[selectedUser] && (
+            {selectedUser && allStories[selectedUser] && (
                 <StoryViewer
-                    stories={storiesByUser[selectedUser]}
+                    stories={allStories[selectedUser]}
                     onClose={() => setSelectedUser(null)}
                     onNextUser={handleNextUser}
                     onPrevUser={handlePrevUser}

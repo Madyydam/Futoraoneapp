@@ -10,6 +10,86 @@ import { Input } from "@/components/ui/input";
 import { formatDistanceToNow } from "date-fns";
 import type { User } from "@supabase/supabase-js";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+
+// Demo chat users that appear for all users
+const DEMO_CHAT_USERS = [
+  {
+    id: 'demo-chat-1',
+    updated_at: new Date().toISOString(),
+    otherUser: {
+      id: 'test-user-1',
+      username: 'Testing 1',
+      full_name: 'Testing 1',
+      avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Testing1'
+    },
+    lastMessage: {
+      content: 'Hey! Welcome to FutoraOne! 👋',
+      created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString()
+    },
+    unreadCount: 0
+  },
+  {
+    id: 'demo-chat-2',
+    updated_at: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+    otherUser: {
+      id: 'test-user-2',
+      username: 'Testing 2',
+      full_name: 'Testing 2',
+      avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Testing2'
+    },
+    lastMessage: {
+      content: 'Check out my latest project! 🚀',
+      created_at: new Date(Date.now() - 1000 * 60 * 60).toISOString()
+    },
+    unreadCount: 0
+  },
+  {
+    id: 'demo-chat-3',
+    updated_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
+    otherUser: {
+      id: 'test-user-3',
+      username: 'Testing 3',
+      full_name: 'Testing 3',
+      avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Testing3'
+    },
+    lastMessage: {
+      content: 'Need help with React hooks?',
+      created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString()
+    },
+    unreadCount: 0
+  },
+  {
+    id: 'demo-chat-4',
+    updated_at: new Date(Date.now() - 1000 * 60 * 180).toISOString(),
+    otherUser: {
+      id: 'test-user-4',
+      username: 'Testing 4',
+      full_name: 'Testing 4',
+      avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Testing4'
+    },
+    lastMessage: {
+      content: 'Let's collaborate on something!',
+      created_at: new Date(Date.now() - 1000 * 60 * 180).toISOString()
+    },
+    unreadCount: 0
+  },
+  {
+    id: 'demo-chat-5',
+    updated_at: new Date(Date.now() - 1000 * 60 * 240).toISOString(),
+    otherUser: {
+      id: 'test-user-5',
+      username: 'Testing 5',
+      full_name: 'Testing 5',
+      avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Testing5'
+    },
+    lastMessage: {
+      content: 'Anyone up for a hackathon? 💻',
+      created_at: new Date(Date.now() - 1000 * 60 * 240).toISOString()
+    },
+    unreadCount: 0
+  }
+];
 
 interface ConversationWithDetails {
   id: string;
@@ -32,7 +112,8 @@ const Messages = () => {
   const [user, setUser] = useState<User | null>(null);
   const [conversations, setConversations] = useState<ConversationWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = "");
+  const { toast } = useToast();
 
   useEffect(() => {
     checkAuth();
@@ -116,7 +197,7 @@ const Messages = () => {
         .eq("conversation_id", participation.conversation_id)
         .neq("sender_id", user.id)
         .gt("created_at", participation.last_read_at || "1970-01-01");
-      
+
       unreadCounts[participation.conversation_id] = count || 0;
     }
 
@@ -144,12 +225,27 @@ const Messages = () => {
       .filter(Boolean) as ConversationWithDetails[];
 
     // Sort by most recent
-    conversationDetails.sort((a, b) => 
+    conversationDetails.sort((a, b) =>
       new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
     );
 
-    setConversations(conversationDetails);
+    // Merge demo users with real conversations
+    const allConversations = [...DEMO_CHAT_USERS, ...conversationDetails];
+
+    setConversations(allConversations);
     setLoading(false);
+  };
+
+  const handleConversationClick = (conv: ConversationWithDetails) => {
+    // Check if it's a demo user
+    if (conv.id.startsWith('demo-chat-')) {
+      toast({
+        title: "Demo User",
+        description: "This is a demo conversation. Start chatting with real users by searching for them!",
+      });
+      return;
+    }
+    navigate(`/chat/${conv.id}`);
   };
 
   const handleSearchUsers = () => {
@@ -195,7 +291,7 @@ const Messages = () => {
               <Card
                 key={conv.id}
                 className="bg-card border-border hover:border-primary transition-all cursor-pointer"
-                onClick={() => navigate(`/chat/${conv.id}`)}
+                onClick={() => handleConversationClick(conv)}
               >
                 <CardContent className="p-3 sm:p-4">
                   <div className="flex items-center gap-3">
