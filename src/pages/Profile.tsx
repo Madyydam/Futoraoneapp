@@ -71,40 +71,47 @@ const Profile = () => {
       }
       setUser(user);
 
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
+      // Execute all queries in parallel for faster loading
+      const [profileResult, projectsResult, postsResult, followersResult, followingResult] =
+        await Promise.all([
+          supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .single(),
+          supabase
+            .from("projects")
+            .select(`
+              *,
+              project_likes(id)
+            `)
+            .eq("user_id", user.id)
+            .order('created_at', { ascending: false }),
+          supabase
+            .from("posts")
+            .select(`
+              *,
+              likes(id),
+              comments(id)
+            `)
+            .eq("user_id", user.id)
+            .order('created_at', { ascending: false }),
+          supabase
+            .from("follows")
+            .select("*", { count: "exact", head: true })
+            .eq("following_id", user.id),
+          supabase
+            .from("follows")
+            .select("*", { count: "exact", head: true })
+            .eq("follower_id", user.id)
+        ]);
 
-      setProfile(profileData as unknown as Profile);
+      setProfile(profileResult.data as unknown as Profile);
+      setProjects((projectsResult.data as unknown as Project[]) || []);
+      setPosts((postsResult.data as unknown as Post[]) || []);
+      setFollowerCount(followersResult.count || 0);
+      setFollowingCount(followingResult.count || 0);
 
-      // Fetch user's projects
-      const { data: projectsData } = await supabase
-        .from("projects")
-        .select(`
-          *,
-          project_likes(id)
-        `)
-        .eq("user_id", user.id)
-        .order('created_at', { ascending: false });
-
-      setProjects((projectsData as unknown as Project[]) || []);
-
-      // Fetch user's posts
-      const { data: postsData } = await supabase
-        .from("posts")
-        .select(`
-          *,
-          likes(id),
-          comments(id)
-        `)
-        .eq("user_id", user.id)
-        .order('created_at', { ascending: false });
-
-      setPosts((postsData as unknown as Post[]) || []);
-
-      await fetchFollowerCounts(user.id);
       setLoading(false);
     };
 

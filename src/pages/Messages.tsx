@@ -107,18 +107,22 @@ const Messages = () => {
       .in("conversation_id", conversationIds)
       .order("created_at", { ascending: false });
 
-    // Get unread message counts
+    // Get unread message counts - optimized single query instead of N+1
+    const { data: unreadMessages } = await supabase
+      .from("messages")
+      .select("conversation_id, sender_id, created_at")
+      .in("conversation_id", conversationIds)
+      .neq("sender_id", user.id);
+
+    // Calculate unread counts per conversation in JavaScript
     const unreadCounts: Record<string, number> = {};
-    for (const participation of participations) {
-      const { count } = await supabase
-        .from("messages")
-        .select("*", { count: "exact", head: true })
-        .eq("conversation_id", participation.conversation_id)
-        .neq("sender_id", user.id)
-        .gt("created_at", participation.last_read_at || "1970-01-01");
-      
-      unreadCounts[participation.conversation_id] = count || 0;
-    }
+    participations.forEach(p => {
+      const count = unreadMessages?.filter(msg =>
+        msg.conversation_id === p.conversation_id &&
+        msg.created_at > (p.last_read_at || "1970-01-01")
+      ).length || 0;
+      unreadCounts[p.conversation_id] = count;
+    });
 
     // Build conversation details
     const conversationDetails: ConversationWithDetails[] = participations
@@ -144,7 +148,7 @@ const Messages = () => {
       .filter(Boolean) as ConversationWithDetails[];
 
     // Sort by most recent
-    conversationDetails.sort((a, b) => 
+    conversationDetails.sort((a, b) =>
       new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
     );
 
