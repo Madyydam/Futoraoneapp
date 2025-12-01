@@ -94,7 +94,6 @@ const UserProfile = () => {
         setFollowingCount(followingResult.count || 0);
     }, [userId]);
 
-<<<<<<< HEAD
     useEffect(() => {
         if (currentUser && userId) {
             checkBlockStatus();
@@ -163,10 +162,7 @@ const UserProfile = () => {
         }
     };
 
-    const fetchData = async () => {
-=======
     const fetchData = useCallback(async () => {
->>>>>>> e939c1242966380021d486bc976d63d0bef9edda
         const { data: { user } } = await supabase.auth.getUser();
         setCurrentUser(user);
 
@@ -301,8 +297,8 @@ const UserProfile = () => {
                             <div className="flex items-center gap-2">
                                 <p className="text-muted-foreground">@{profile?.username}</p>
                                 {mutualCount > 0 && currentUser?.id !== userId && (
-                                    <Badge 
-                                        variant="secondary" 
+                                    <Badge
+                                        variant="secondary"
                                         className="flex items-center gap-1 bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer transition-colors"
                                         onClick={() => setMutualModalOpen(true)}
                                     >
