@@ -33,9 +33,12 @@ export function ChatWindow({ conversationId, currentUserId }: { conversationId: 
     const navigate = useNavigate();
     const { toast } = useToast();
 
+    const [isBlocked, setIsBlocked] = useState(false);
+
     useEffect(() => {
         fetchMessages();
         fetchOtherUser();
+        checkBlockStatus();
 
         const channel = supabase
             .channel(`conversation:${conversationId}`)
@@ -64,6 +67,58 @@ export function ChatWindow({ conversationId, currentUserId }: { conversationId: 
             supabase.removeChannel(channel);
         };
     }, [conversationId, currentUserId]);
+
+    const checkBlockStatus = async () => {
+        // Check if I blocked them
+        const { data: myBlock } = await supabase
+            .from('blocks')
+            .select('*')
+            .eq('blocker_id', currentUserId)
+            .eq('blocked_id', otherUser?.id) // Note: otherUser might be null initially, need to handle that or re-check when otherUser is set.
+            .single();
+
+        // Check if they blocked me
+        // Ideally we should know the other user ID. 
+        // We can get it from conversation participants if otherUser is not set yet.
+
+        // Let's rely on fetching participants first to get the other user ID.
+    };
+
+    // Better approach: Fetch participants, identify other user, then check blocks.
+    useEffect(() => {
+        const init = async () => {
+            await fetchOtherUser();
+        };
+        init();
+    }, [conversationId]);
+
+    useEffect(() => {
+        if (otherUser) {
+            checkBlocks();
+        }
+    }, [otherUser]);
+
+    const checkBlocks = async () => {
+        if (!otherUser) return;
+
+        const { data: block1 } = await supabase
+            .from('blocks')
+            .select('*')
+            .eq('blocker_id', currentUserId)
+            .eq('blocked_id', otherUser.id)
+            .single();
+
+        const { data: block2 } = await supabase
+            .from('blocks')
+            .select('*')
+            .eq('blocker_id', otherUser.id)
+            .eq('blocked_id', currentUserId)
+            .single();
+
+        if (block1 || block2) {
+            setIsBlocked(true);
+        }
+    };
 
     const fetchOtherUser = async () => {
         const { data } = await supabase
@@ -119,7 +174,7 @@ export function ChatWindow({ conversationId, currentUserId }: { conversationId: 
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newMessage.trim()) return;
+        if (!newMessage.trim() || isBlocked) return;
 
         console.log('Attempting to send message:', {
             conversation_id: conversationId,
@@ -194,17 +249,23 @@ export function ChatWindow({ conversationId, currentUserId }: { conversationId: 
             </ScrollArea>
 
             {/* Input */}
-            <form onSubmit={handleSend} className="p-4 border-t flex gap-2">
-                <Input
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Type a message..."
-                    className="flex-1"
-                />
-                <Button type="submit" size="icon" disabled={!newMessage.trim()}>
-                    <Send className="h-4 w-4" />
-                </Button>
-            </form>
+            {isBlocked ? (
+                <div className="p-4 border-t text-center text-muted-foreground bg-muted/50">
+                    You cannot message this user.
+                </div>
+            ) : (
+                <form onSubmit={handleSend} className="p-4 border-t flex gap-2">
+                    <Input
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        placeholder="Type a message..."
+                        className="flex-1"
+                    />
+                    <Button type="submit" size="icon" disabled={!newMessage.trim()}>
+                        <Send className="h-4 w-4" />
+                    </Button>
+                </form>
+            )}
         </div>
     );
 }

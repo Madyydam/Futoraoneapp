@@ -50,8 +50,8 @@ const AIPage = () => {
             icon: <Lightbulb className="w-8 h-8 text-yellow-400" />,
             color: "from-yellow-500/20 to-orange-500/20",
             border: "hover:border-yellow-500/50",
-            action: () => { }, // Placeholder
-            comingSoon: true,
+            action: () => navigate("/project-ideas"),
+            comingSoon: false,
             delay: 0.2,
         },
         {

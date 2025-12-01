@@ -35,7 +35,7 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, onUpdate }: Edi
     full_name: profile?.full_name || "",
     username: profile?.username || "",
     bio: profile?.bio || "",
-    location: profile?.location || "",
+    location: profile?.location || "Pune",
     github_url: profile?.github_url || "",
     linkedin_url: profile?.linkedin_url || "",
     portfolio_url: profile?.portfolio_url || "",
@@ -195,9 +195,9 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, onUpdate }: Edi
             <Label htmlFor="location">Location</Label>
             <Input
               id="location"
-              value={formData.location}
+              value={formData.location || "Pune"}
               onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              placeholder="e.g., San Francisco, CA"
+              placeholder="Pune"
             />
           </div>
 

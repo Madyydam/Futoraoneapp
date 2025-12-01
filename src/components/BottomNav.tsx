@@ -1,3 +1,4 @@
+import React, { useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Home, Search, Plus, MessageCircle, User as UserIcon } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -6,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { Badge } from "@/components/ui/badge";
 
-export const BottomNav = () => {
+export const BottomNav = React.memo(() => {
   const navigate = useNavigate();
   const location = useLocation();
   const [userId, setUserId] = useState<string>();
@@ -18,7 +19,9 @@ export const BottomNav = () => {
     });
   }, []);
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = useCallback((path: string) => location.pathname === path, [location.pathname]);
+
+  const handleNavigate = useCallback((path: string) => navigate(path), [navigate]);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-black/20 dark:border-border z-50 shadow-lg">
@@ -27,7 +30,7 @@ export const BottomNav = () => {
           variant={isActive("/feed") ? "default" : "ghost"}
           size="icon"
           className={`rounded-xl transition-all ${isActive("/feed") ? "bg-primary text-primary-foreground shadow-md" : "hover:bg-muted"}`}
-          onClick={() => navigate("/feed")}
+          onClick={() => handleNavigate("/feed")}
         >
           <Home className="w-6 h-6" />
         </Button>
@@ -35,14 +38,14 @@ export const BottomNav = () => {
           variant={isActive("/explore") ? "default" : "ghost"}
           size="icon"
           className={`rounded-xl transition-all ${isActive("/explore") ? "bg-primary text-primary-foreground shadow-md" : "hover:bg-muted"}`}
-          onClick={() => navigate("/explore")}
+          onClick={() => handleNavigate("/explore")}
         >
           <Search className="w-6 h-6" />
         </Button>
         <Button
           size="icon"
           className="gradient-primary text-white rounded-full shadow-lg scale-110"
-          onClick={() => navigate("/create-post")}
+          onClick={() => handleNavigate("/create-post")}
         >
           <Plus className="w-6 h-6" />
         </Button>
@@ -51,7 +54,7 @@ export const BottomNav = () => {
             variant={isActive("/messages") ? "default" : "ghost"}
             size="icon"
             className={`rounded-xl transition-all ${isActive("/messages") ? "bg-primary text-primary-foreground shadow-md" : "hover:bg-muted"}`}
-            onClick={() => navigate("/messages")}
+            onClick={() => handleNavigate("/messages")}
           >
             <MessageCircle className="w-6 h-6" />
           </Button>
@@ -65,11 +68,11 @@ export const BottomNav = () => {
           variant={isActive("/profile") ? "default" : "ghost"}
           size="icon"
           className={`rounded-xl transition-all ${isActive("/profile") ? "bg-primary text-primary-foreground shadow-md" : "hover:bg-muted"}`}
-          onClick={() => navigate("/profile")}
+          onClick={() => handleNavigate("/profile")}
         >
           <UserIcon className="w-6 h-6" />
         </Button>
       </div>
     </nav>
   );
-};
+});

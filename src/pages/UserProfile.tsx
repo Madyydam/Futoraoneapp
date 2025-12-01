@@ -6,7 +6,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Github, Linkedin, Globe, MapPin, Heart, MessageCircle } from "lucide-react";
+import { ArrowLeft, Github, Linkedin, Globe, MapPin, Heart, MessageCircle, MoreVertical } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { motion } from "framer-motion";
 import type { User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
@@ -61,11 +67,81 @@ const UserProfile = () => {
     const [followersModalOpen, setFollowersModalOpen] = useState(false);
     const [followersModalTab, setFollowersModalTab] = useState<"followers" | "following">("followers");
 
+    const [isBlocked, setIsBlocked] = useState(false);
+
     useTrackProfileView(userId, currentUser?.id);
 
     useEffect(() => {
         fetchData();
     }, [userId]);
+
+    useEffect(() => {
+        if (currentUser && userId) {
+            checkBlockStatus();
+        }
+    }, [currentUser, userId]);
+
+    const checkBlockStatus = async () => {
+        if (!currentUser || !userId) return;
+
+        const { data } = await supabase
+            .from('blocks')
+            .select('*')
+            .eq('blocker_id', currentUser.id)
+            .eq('blocked_id', userId)
+            .single();
+
+        setIsBlocked(!!data);
+    };
+
+    const handleBlock = async () => {
+        if (!currentUser || !userId) return;
+
+        const { error } = await supabase
+            .from('blocks')
+            .insert({
+                blocker_id: currentUser.id,
+                blocked_id: userId
+            });
+
+        if (error) {
+            toast({
+                title: "Error",
+                description: "Failed to block user",
+                variant: "destructive",
+            });
+        } else {
+            setIsBlocked(true);
+            toast({
+                title: "User blocked",
+                description: "You will no longer receive messages from this user.",
+            });
+        }
+    };
+
+    const handleUnblock = async () => {
+        if (!currentUser || !userId) return;
+
+        const { error } = await supabase
+            .from('blocks')
+            .delete()
+            .eq('blocker_id', currentUser.id)
+            .eq('blocked_id', userId);
+
+        if (error) {
+            toast({
+                title: "Error",
+                description: "Failed to unblock user",
+                variant: "destructive",
+            });
+        } else {
+            setIsBlocked(false);
+            toast({
+                title: "User unblocked",
+                description: "You can now message this user.",
+            });
+        }
+    };
 
     const fetchData = async () => {
         const { data: { user } } = await supabase.auth.getUser();
@@ -177,7 +253,7 @@ const UserProfile = () => {
                                     </Avatar>
                                     <OnlineIndicator userId={userId!} className="w-5 h-5" />
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex flex-wrap gap-2 justify-end">
                                     <FollowButton
                                         userId={userId!}
                                         currentUserId={currentUser?.id}
@@ -187,6 +263,26 @@ const UserProfile = () => {
                                         userId={userId!}
                                         currentUserId={currentUser?.id}
                                     />
+                                    {currentUser && currentUser.id !== userId && (
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon">
+                                                    <MoreVertical className="h-5 w-5" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem
+                                                    className="text-destructive focus:text-destructive cursor-pointer"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        isBlocked ? handleUnblock() : handleBlock();
+                                                    }}
+                                                >
+                                                    {isBlocked ? "Unblock User" : "Block User"}
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    )}
                                 </div>
                             </div>
 
@@ -198,12 +294,10 @@ const UserProfile = () => {
                             )}
 
                             <div className="flex items-center gap-2 mt-3 text-muted-foreground text-sm">
-                                {profile?.location && (
-                                    <>
-                                        <MapPin size={16} />
-                                        <span>{profile.location}</span>
-                                    </>
-                                )}
+                                <>
+                                    <MapPin size={16} />
+                                    <span>{profile.location || "Pune"}</span>
+                                </>
                             </div>
 
                             <div className="flex gap-3 mt-4">

@@ -55,7 +55,7 @@ const Welcome = () => {
             className="space-y-4 pt-4"
           >
             <Button
-              onClick={() => navigate("/auth")}
+              onClick={() => navigate("/auth?mode=signup")}
               className="w-full bg-white text-background hover:bg-white/90 font-semibold text-lg h-14 rounded-full shadow-xl transition-all hover:scale-105"
             >
               Get Started
