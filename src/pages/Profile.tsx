@@ -354,6 +354,28 @@ const Profile = () => {
           </Button>
         </motion.div>
       </div>
+
+      <EditProfileDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        profile={profile}
+        onUpdate={refreshProfile}
+      />
+
+      <FollowersModal
+        open={followersModalOpen}
+        onOpenChange={setFollowersModalOpen}
+        userId={user?.id || ""}
+        currentUserId={user?.id}
+        defaultTab={followersModalTab}
+      />
+
+      <LogoutDialog
+        open={logoutDialogOpen}
+        onOpenChange={setLogoutDialogOpen}
+        onConfirm={confirmLogout}
+      />
+
       <BottomNav />
     </div>
   );
