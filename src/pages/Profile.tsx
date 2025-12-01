@@ -11,11 +11,13 @@ import { motion } from "framer-motion";
 import type { User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
 import { EditProfileDialog } from "@/components/EditProfileDialog";
+import { LogoutDialog } from "@/components/LogoutDialog";
 import { BottomNav } from "@/components/BottomNav";
 import { FollowersModal } from "@/components/FollowersModal";
 import { ProfileProjects } from "@/components/ProfileProjects";
 import { ProfilePosts } from "@/components/ProfilePosts";
 import { ModeToggle } from "@/components/mode-toggle";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 
 interface Profile {
   id: string;
@@ -29,6 +31,7 @@ interface Profile {
   portfolio_url: string | null;
   tech_skills: string[] | null;
   banner_url: string | null;
+  is_verified?: boolean | null;
 }
 
 interface Project {
@@ -55,6 +58,7 @@ const Profile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [followerCount, setFollowerCount] = useState(0);
@@ -144,8 +148,12 @@ const Profile = () => {
   };
 
   const handleLogout = async () => {
+    setLogoutDialogOpen(true);
+  };
+
+  const confirmLogout = async () => {
     await supabase.auth.signOut();
-    toast({ title: "Logged out successfully" });
+    toast({ title: "Logged out successfully", description: "See you next time! 👋" });
     navigate("/");
   };
 
@@ -209,7 +217,10 @@ const Profile = () => {
                 </div>
               </div>
 
-              <h1 className="text-2xl font-bold text-foreground">{profile?.full_name}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-foreground">{profile?.full_name}</h1>
+                <VerifiedBadge isVerified={profile?.is_verified} size={20} />
+              </div>
               <p className="text-muted-foreground">@{profile?.username}</p>
 
               {profile?.bio && (
@@ -343,22 +354,6 @@ const Profile = () => {
           </Button>
         </motion.div>
       </div>
-
-      <EditProfileDialog
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-        profile={profile}
-        onUpdate={refreshProfile}
-      />
-
-      <FollowersModal
-        open={followersModalOpen}
-        onOpenChange={setFollowersModalOpen}
-        userId={user?.id || ""}
-        currentUserId={user?.id}
-        defaultTab={followersModalTab}
-      />
-
       <BottomNav />
     </div>
   );

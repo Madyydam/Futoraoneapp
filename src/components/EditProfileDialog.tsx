@@ -134,29 +134,74 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, onUpdate }: Edi
           <DialogTitle>Edit Profile</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label>Profile Picture</Label>
-            <div className="flex items-center gap-4">
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
-                className="flex-1"
-              />
-              <Upload className="w-5 h-5 text-muted-foreground" />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Profile Picture</Label>
+              <div className="flex items-center gap-4">
+                <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-muted">
+                  {avatarFile ? (
+                    <img
+                      src={URL.createObjectURL(avatarFile)}
+                      alt="Avatar preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={profile?.avatar_url || "/placeholder.svg"}
+                      alt="Current avatar"
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
+                    className="cursor-pointer"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Recommended: Square image, max 2MB
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label>Banner Image</Label>
-            <div className="flex items-center gap-4">
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setBannerFile(e.target.files?.[0] || null)}
-                className="flex-1"
-              />
-              <Upload className="w-5 h-5 text-muted-foreground" />
+            <div className="space-y-2">
+              <Label>Banner Image</Label>
+              <div className="space-y-3">
+                <div className="relative w-full h-32 rounded-lg overflow-hidden border-2 border-muted bg-muted/30">
+                  {bannerFile ? (
+                    <img
+                      src={URL.createObjectURL(bannerFile)}
+                      alt="Banner preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : profile?.banner_url ? (
+                    <img
+                      src={profile.banner_url}
+                      alt="Current banner"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                      <span className="text-sm">No banner set</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setBannerFile(e.target.files?.[0] || null)}
+                    className="cursor-pointer"
+                  />
+                  <Upload className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Recommended: 1500x500px, max 5MB
+                </p>
+              </div>
             </div>
           </div>
 

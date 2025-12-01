@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { OnlineIndicator } from "@/components/OnlineIndicator";
 import { FollowButton } from "@/components/FollowButton";
 import { StartChatButton } from "@/components/StartChatButton";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 
 interface UserProfile {
     id: string;
@@ -15,6 +16,7 @@ interface UserProfile {
     bio: string | null;
     follower_count?: number;
     following_count?: number;
+    is_verified?: boolean | null;
 }
 
 interface UserCardProps {
@@ -53,9 +55,12 @@ export const UserCard = memo(({ user, currentUser, index }: UserCardProps) => {
                                 className="cursor-pointer"
                                 onClick={() => navigate(`/user/${user.id}`)}
                             >
-                                <p className="font-semibold text-foreground truncate">
-                                    {user.full_name}
-                                </p>
+                                <div className="flex items-center gap-1">
+                                    <p className="font-semibold text-foreground truncate">
+                                        {user.full_name}
+                                    </p>
+                                    <VerifiedBadge isVerified={user.is_verified} size={14} />
+                                </div>
                                 <p className="text-sm text-muted-foreground truncate">
                                     @{user.username}
                                 </p>

@@ -25,6 +25,7 @@ import { OnlineIndicator } from "@/components/OnlineIndicator";
 import { useMutualFollowers } from "@/hooks/useMutualFollowers";
 import { MutualFollowersModal } from "@/components/MutualFollowersModal";
 import { Users } from "lucide-react";
+import { BlockUserDialog } from "@/components/BlockUserDialog";
 
 interface Profile {
     id: string;
@@ -72,6 +73,7 @@ const UserProfile = () => {
     const [mutualModalOpen, setMutualModalOpen] = useState(false);
 
     const [isBlocked, setIsBlocked] = useState(false);
+    const [showBlockDialog, setShowBlockDialog] = useState(false);
 
     useTrackProfileView(userId, currentUser?.id);
     const { mutualCount } = useMutualFollowers(currentUser?.id, userId);
@@ -282,7 +284,7 @@ const UserProfile = () => {
                                                     className="text-destructive focus:text-destructive cursor-pointer"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        isBlocked ? handleUnblock() : handleBlock();
+                                                        isBlocked ? handleUnblock() : setShowBlockDialog(true);
                                                     }}
                                                 >
                                                     {isBlocked ? "Unblock User" : "Block User"}
@@ -462,6 +464,16 @@ const UserProfile = () => {
                     profileUserId={userId}
                 />
             )}
+
+            <BlockUserDialog
+                open={showBlockDialog}
+                onOpenChange={setShowBlockDialog}
+                onConfirm={() => {
+                    handleBlock();
+                    setShowBlockDialog(false);
+                }}
+                username={profile?.username || ""}
+            />
 
             <BottomNav />
         </div >
