@@ -33,17 +33,6 @@ const AIPage = () => {
             delay: 0,
         },
         {
-            id: "code-assistant",
-            title: "Code Assistant",
-            description: "Get instant help with debugging and code optimization.",
-            icon: <Code className="w-8 h-8 text-purple-400" />,
-            color: "from-purple-500/20 to-pink-500/20",
-            border: "hover:border-purple-500/50",
-            action: () => { }, // Placeholder
-            comingSoon: true,
-            delay: 0.1,
-        },
-        {
             id: "project-ideas",
             title: "Project Ideas",
             description: "Generate unique project ideas based on your skills.",
@@ -52,6 +41,17 @@ const AIPage = () => {
             border: "hover:border-yellow-500/50",
             action: () => navigate("/project-ideas"),
             comingSoon: false,
+            delay: 0.1,
+        },
+        {
+            id: "code-assistant",
+            title: "Code Assistant",
+            description: "Get instant help with debugging and code optimization.",
+            icon: <Code className="w-8 h-8 text-purple-400" />,
+            color: "from-purple-500/20 to-pink-500/20",
+            border: "hover:border-purple-500/50",
+            action: () => { }, // Placeholder
+            comingSoon: true,
             delay: 0.2,
         },
         {
