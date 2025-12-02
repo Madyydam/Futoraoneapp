@@ -38,6 +38,7 @@ const StoryView = lazy(() => import("./pages/StoryView"));
 const ProfileViews = lazy(() => import("./pages/ProfileViews"));
 const AllPeople = lazy(() => import("./pages/AllPeople"));
 const ProjectIdeas = lazy(() => import("./pages/ProjectIdeas"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 
 const queryClient = new QueryClient();
 
@@ -90,6 +91,7 @@ const App = () => {
                 <Route path="/story/:userId" element={<StoryView />} />
                 <Route path="/profile-views" element={<ProfileViews />} />
                 <Route path="/project-ideas" element={<ProjectIdeas />} />
+                <Route path="/admin" element={<AdminDashboard />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
