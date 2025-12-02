@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import { StoryViewer, Story } from "./StoryViewer";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import imageCompression from 'browser-image-compression';
 
 // Demo stories for when there are no real users
 const DEMO_STORIES = [
@@ -245,9 +246,25 @@ export const Stories = () => {
             const fileName = `${Math.random()}.${fileExt}`;
             const filePath = `stories/${currentUser.id}/${fileName}`;
 
+            let uploadFile = file;
+
+            // Compress if image
+            if (file.type.startsWith('image')) {
+                const options = {
+                    maxSizeMB: 1,
+                    maxWidthOrHeight: 1920,
+                    useWebWorker: true,
+                };
+                try {
+                    uploadFile = await imageCompression(file, options);
+                } catch (error) {
+                    console.error("Story image compression failed:", error);
+                }
+            }
+
             const { error: uploadError } = await supabase.storage
                 .from('stories') // Make sure this bucket exists!
-                .upload(filePath, file);
+                .upload(filePath, uploadFile);
 
             if (uploadError) throw uploadError;
 

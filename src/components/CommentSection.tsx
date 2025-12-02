@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, Send } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
-import { sendPushNotification } from "@/utils/notifications";
+import { CommentSkeleton } from "@/components/CommentSkeleton";
 
 interface Comment {
     id: string;
@@ -58,7 +58,10 @@ export const CommentSection = ({ postId, postAuthorId, currentUser }: CommentSec
         };
     }, [postId]);
 
+    const [isFetching, setIsFetching] = useState(true);
+
     const fetchComments = async () => {
+        setIsFetching(true);
         const { data, error } = await supabase
             .from("comments")
             .select(`
@@ -71,44 +74,49 @@ export const CommentSection = ({ postId, postAuthorId, currentUser }: CommentSec
         if (!error && data) {
             setComments(data as unknown as Comment[]);
         }
+        setIsFetching(false);
     };
+
 
     const handleSubmitComment = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!currentUser || !newComment.trim()) return;
 
+        // Optimistic UI: add comment locally
+        const tempId = `temp-${Date.now()}`;
+        const tempComment: Comment = {
+            id: tempId,
+            content: newComment.trim(),
+            created_at: new Date().toISOString(),
+            user_id: currentUser.id,
+            profiles: {
+                username: currentUser.user_metadata?.username || "",
+                full_name: currentUser.user_metadata?.full_name || "",
+                avatar_url: currentUser.user_metadata?.avatar_url || null,
+            },
+        };
+        setComments((prev) => [...prev, tempComment]);
+        setNewComment("");
         setLoading(true);
 
         try {
             const { error } = await supabase.from("comments").insert({
                 post_id: postId,
                 user_id: currentUser.id,
-                content: newComment.trim(),
+                content: tempComment.content,
             });
 
             if (error) throw error;
 
-            // Create notification for post author if not commenting on own post
-            if (postAuthorId !== currentUser.id) {
-                await supabase.from("notifications").insert({
-                    user_id: postAuthorId,
-                    type: "comment",
-                    actor_id: currentUser.id,
-                    post_id: postId,
-                    is_read: false,
-                });
-
-                // Send Push Notification
-                const actorName = currentUser.user_metadata.full_name || currentUser.email?.split('@')[0] || "Someone";
-                await sendPushNotification(postAuthorId, `${actorName} commented on your post`);
-            }
-
-            setNewComment("");
+            // Refresh comments from server to get real IDs and timestamps
+            await fetchComments();
             toast({
                 title: "Comment posted",
                 description: "Your comment has been added",
             });
         } catch (error) {
+            // Revert optimistic comment on error
+            setComments((prev) => prev.filter((c) => c.id !== tempId));
             toast({
                 title: "Error",
                 description: (error as Error).message,

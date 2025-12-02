@@ -13,6 +13,9 @@ import type { User } from "@supabase/supabase-js";
 import { sendPushNotification } from "@/utils/notifications";
 import { FeedPost } from "@/components/FeedPost";
 import { ModeToggle } from "@/components/mode-toggle";
+import { useInView } from "react-intersection-observer";
+import { FeedSearch } from "@/components/FeedSearch";
+import { getPostsFromCache, savePostsToCache } from "@/utils/cache";
 
 // Demo posts for initial content
 const DEMO_POSTS = Array.from({ length: 30 }, (_, i) => ({
@@ -117,9 +120,14 @@ const Feed = () => {
   const [user, setUser] = useState<User | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const { ref, inView } = useInView();
+  const POSTS_PER_PAGE = 10;
   const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [filteredPosts, setFilteredPosts] = useState<Post[] | null>(null);
 
   useEffect(() => {
     // Check authentication
@@ -143,7 +151,26 @@ const Feed = () => {
   }, [navigate]);
 
   useEffect(() => {
+    if (inView && hasMore && !loading) {
+      setPage((prev) => prev + 1);
+    }
+  }, [inView, hasMore, loading]);
+
+  useEffect(() => {
+
     if (user) {
+      // Load from cache first
+      const loadCache = async () => {
+        const cachedPosts = await getPostsFromCache();
+        if (cachedPosts && cachedPosts.length > 0) {
+          // Sort by date desc
+          cachedPosts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          setPosts(cachedPosts);
+          setLoading(false); // Show cached content immediately
+        }
+      };
+      loadCache();
+
       fetchPosts();
       fetchUnreadCount();
 
@@ -158,7 +185,9 @@ const Feed = () => {
             table: 'posts'
           },
           () => {
-            fetchPosts();
+            // Reset pagination on new post
+            setPage(0);
+            fetchPosts(true);
           }
         )
         .on(
@@ -169,7 +198,8 @@ const Feed = () => {
             table: 'likes'
           },
           () => {
-            fetchPosts();
+            // For likes, we might want to just update the specific post, but for now re-fetch current page or do nothing if optimistic UI handles it.
+            // Actually, re-fetching everything might be too heavy. Let's rely on optimistic UI for likes.
           }
         )
 
@@ -193,8 +223,21 @@ const Feed = () => {
     }
   }, [user]);
 
-  const fetchPosts = useCallback(async () => {
+  useEffect(() => {
+    if (page > 0) {
+      fetchPosts();
+    }
+  }, [page]);
+
+  const fetchPosts = useCallback(async (reset = false) => {
     try {
+      if (reset) {
+        setLoading(true);
+      }
+
+      const from = (reset ? 0 : page) * POSTS_PER_PAGE;
+      const to = from + POSTS_PER_PAGE - 1;
+
       const { data, error } = await supabase
         .from('posts')
         .select(`
@@ -204,13 +247,40 @@ const Feed = () => {
           comments(id),
           saves(id, user_id)
         `)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (error) throw error;
 
-      // Real posts first, then demo posts
-      const allPosts = [...(data || []), ...DEMO_POSTS];
-      setPosts(allPosts);
+      // Real posts first, then demo posts (only append demo posts if we run out of real posts, or just mix them in initially? 
+      // For infinite scroll, let's stick to real posts for now, or handle demo posts separately.
+      // The original code mixed them. Let's keep it simple: if no real posts, show demo posts.
+
+      const newPosts = data || [];
+
+      if (newPosts.length < POSTS_PER_PAGE) {
+        setHasMore(false);
+      } else {
+        setHasMore(true);
+      }
+
+      if (reset || page === 0) {
+        // If it's the first page and we have very few posts, maybe append demo posts?
+        // For now, let's just set posts.
+        if (newPosts.length === 0 && page === 0) {
+          setPosts(DEMO_POSTS);
+          setHasMore(false); // Demo posts are static
+        } else {
+          setPosts(newPosts);
+          // Cache the first page of fresh posts
+          if (page === 0) {
+            savePostsToCache(newPosts);
+          }
+        }
+      } else {
+        setPosts(prev => [...prev, ...newPosts]);
+      }
+
     } catch (error) {
       toast({
         title: "Error loading posts",
@@ -220,7 +290,7 @@ const Feed = () => {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, page]);
 
   const fetchUnreadCount = async () => {
     if (!user) return;
@@ -249,13 +319,6 @@ const Feed = () => {
 
     try {
       if (isLiked) {
-        // We need the ID to delete, but since we don't have 'posts' dependency, we can't look it up easily from state.
-        // However, we can query the DB or assume we can find it if we had the ID.
-        // Actually, for delete we need the ID.
-        // Strategy: We can fetch the like ID from the DB for this user and post, OR we can trust the optimistic update logic
-        // but we need the ID for the API call.
-
-        // Alternative: Fetch the specific like ID first.
         const { data: likeData } = await supabase
           .from('likes')
           .select('id')
@@ -272,9 +335,6 @@ const Feed = () => {
           post_id: postId,
         });
 
-        // We need to know the post owner to send notification. 
-        // We can't access 'post' object here without 'posts' dependency.
-        // We can fetch the post owner ID.
         const { data: postData } = await supabase
           .from('posts')
           .select('user_id')
@@ -303,11 +363,9 @@ const Feed = () => {
     setPosts(currentPosts => currentPosts.map(post => {
       if (post.id === postId) {
         if (isSaved) {
-          // Remove save
           const newSaves = post.saves ? post.saves.filter(save => save.user_id !== user.id) : [];
           return { ...post, saves: newSaves };
         } else {
-          // Add save
           const newSaves = post.saves ? [...post.saves, { id: 'temp-id', user_id: user.id }] : [{ id: 'temp-id', user_id: user.id }];
           return { ...post, saves: newSaves };
         }
@@ -399,6 +457,8 @@ const Feed = () => {
     navigate("/");
   };
 
+  const postsToDisplay = filteredPosts ?? posts;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-muted/30 to-background">
@@ -446,6 +506,8 @@ const Feed = () => {
 
       {/* Main Content */}
       <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6 pb-24">
+        <FeedSearch posts={posts} onFilteredPostsChange={setFilteredPosts} />
+
         {/* Stories */}
         <div className="mb-6">
           <Stories />
@@ -473,23 +535,30 @@ const Feed = () => {
 
         {/* Posts */}
         <div className="space-y-6">
-          {posts.length === 0 ? (
+          {postsToDisplay.length === 0 && !loading ? (
             <Card className="p-12 text-center">
-              <p className="text-muted-foreground">No posts yet. Be the first to share something!</p>
+              <p className="text-muted-foreground">No posts found.</p>
             </Card>
           ) : (
-            posts.map((post, index) => (
-              <FeedPost
-                key={post.id}
-                post={post}
-                currentUser={user}
-                onLike={toggleLike}
-                onSave={toggleSave}
-                onShare={handleShare}
-                onDelete={handleDeletePost}
-                index={index}
-              />
-            ))
+            <>
+              {postsToDisplay.map((post, index) => (
+                <FeedPost
+                  key={post.id}
+                  post={post}
+                  currentUser={user}
+                  onLike={toggleLike}
+                  onSave={toggleSave}
+                  onShare={handleShare}
+                  onDelete={handleDeletePost}
+                  index={index}
+                />
+              ))}
+              {hasMore && !filteredPosts && (
+                <div ref={ref} className="py-4">
+                  <PostSkeleton />
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>
@@ -500,4 +569,3 @@ const Feed = () => {
 };
 
 export default React.memo(Feed);
-

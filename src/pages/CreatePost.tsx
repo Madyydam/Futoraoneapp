@@ -10,6 +10,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@supabase/supabase-js";
+import imageCompression from 'browser-image-compression';
+import { useDraftPost } from "@/hooks/useDraftPost";
 
 const CreatePost = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -26,6 +28,7 @@ const CreatePost = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
+  const { draft, saveDraft, clearDraft } = useDraftPost();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -43,6 +46,13 @@ const CreatePost = () => {
       const editId = searchParams.get("edit");
       if (editId) {
         fetchPostForEdit(editId);
+      } else if (draft && !content) {
+        // Restore draft if not editing
+        setContent(draft);
+        toast({
+          title: "Draft restored",
+          description: "Your previous draft has been restored.",
+        });
       }
     }
   }, [user, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -80,6 +90,7 @@ const CreatePost = () => {
       if (data.image_url) setImagePreview(data.image_url);
       setPostType(data.is_project_update ? "project_update" : "post");
       if (data.project_id) setSelectedProject(data.project_id);
+      clearDraft(); // Clear draft when editing existing post
     } catch (error) {
       toast({
         title: "Error",
@@ -123,12 +134,28 @@ const CreatePost = () => {
 
       // Upload image if selected and it's a new file
       if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop();
+        const options = {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+        };
+
+        let compressedFile = imageFile;
+        try {
+          console.log('Compressing image...', imageFile.size / 1024 / 1024, 'MB');
+          compressedFile = await imageCompression(imageFile, options);
+          console.log('Compressed image:', compressedFile.size / 1024 / 1024, 'MB');
+        } catch (error) {
+          console.error("Image compression failed:", error);
+          // Fallback to original file if compression fails
+        }
+
+        const fileExt = compressedFile.name.split('.').pop();
         const fileName = `${user.id}/${Math.random()}.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
           .from('post-images')
-          .upload(fileName, imageFile);
+          .upload(fileName, compressedFile);
 
         if (uploadError) throw uploadError;
 
@@ -215,6 +242,7 @@ const CreatePost = () => {
         });
       }
 
+      clearDraft();
       navigate("/feed");
     } catch (error) {
       toast({
@@ -295,7 +323,10 @@ const CreatePost = () => {
                 id="content"
                 placeholder="Share your thoughts..."
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
+                onChange={(e) => {
+                  setContent(e.target.value);
+                  saveDraft(e.target.value);
+                }}
                 className="min-h-32 resize-none"
                 required
               />

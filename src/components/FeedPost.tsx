@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,6 +9,10 @@ import { CommentSection } from "@/components/CommentSection";
 import type { User } from "@supabase/supabase-js";
 import { useNavigate } from "react-router-dom";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
+import { ImageLightbox } from "@/components/ImageLightbox";
+import { triggerHeartConfetti } from "@/utils/confetti";
+import { calculateReadTime } from "@/utils/readTime";
+import DOMPurify from 'dompurify';
 
 interface Post {
   id: string;
@@ -40,9 +44,17 @@ interface FeedPostProps {
 
 export const FeedPost = memo(({ post, currentUser, onLike, onSave, onShare, onDelete, index }: FeedPostProps) => {
   const navigate = useNavigate();
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const isLiked = post.likes.some(like => like.user_id === currentUser?.id);
   const isSaved = post.saves?.some(save => save.user_id === currentUser?.id);
   const isOwner = post.user_id === currentUser?.id;
+
+  const handleLikeClick = () => {
+    if (!isLiked) {
+      triggerHeartConfetti();
+    }
+    onLike(post.id, isLiked);
+  };
 
   return (
     <motion.div
@@ -64,7 +76,7 @@ export const FeedPost = memo(({ post, currentUser, onLike, onSave, onShare, onDe
                   <VerifiedBadge isVerified={post.profiles.is_verified} size={14} />
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  @{post.profiles.username} · {new Date(post.created_at).toLocaleDateString()}
+                  @{post.profiles.username} · {new Date(post.created_at).toLocaleDateString()} · {calculateReadTime(post.content)}
                 </p>
               </div>
             </div>
@@ -92,15 +104,28 @@ export const FeedPost = memo(({ post, currentUser, onLike, onSave, onShare, onDe
             )}
           </div>
 
-          <p className="mb-4">{post.content}</p>
+          <div
+            className="mb-4 prose dark:prose-invert max-w-none"
+            dangerouslySetInnerHTML={{
+              __html: DOMPurify.sanitize(post.content.replace(/\n/g, '<br />'))
+            }}
+          />
 
           {post.image_url && (
-            <img
-              src={post.image_url}
-              alt="Post"
-              className="w-full rounded-xl object-cover mb-4"
-              loading="lazy"
-            />
+            <>
+              <img
+                src={post.image_url}
+                alt="Post"
+                className="w-full rounded-xl object-cover mb-4 cursor-pointer hover:opacity-90 transition-opacity"
+                loading="lazy"
+                onClick={() => setLightboxOpen(true)}
+              />
+              <ImageLightbox
+                imageUrl={post.image_url}
+                isOpen={lightboxOpen}
+                onClose={() => setLightboxOpen(false)}
+              />
+            </>
           )}
 
           {post.video_url && (
@@ -116,7 +141,7 @@ export const FeedPost = memo(({ post, currentUser, onLike, onSave, onShare, onDe
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onLike(post.id, isLiked)}
+              onClick={handleLikeClick}
               className={isLiked ? "text-secondary" : ""}
             >
               <Heart

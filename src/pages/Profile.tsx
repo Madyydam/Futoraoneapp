@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogOut, Github, Linkedin, Globe, MapPin, Edit, Eye, Shield } from "lucide-react";
+import { LogOut, Github, Linkedin, Globe, MapPin, Edit, Eye, Shield, QrCode } from "lucide-react";
 import { motion } from "framer-motion";
 import type { User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +19,7 @@ import { ProfilePosts } from "@/components/ProfilePosts";
 import { ModeToggle } from "@/components/mode-toggle";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { QRCodeDialog } from "@/components/QRCodeDialog";
 
 interface Profile {
   id: string;
@@ -67,6 +68,7 @@ const Profile = () => {
   const [followingCount, setFollowingCount] = useState(0);
   const [followersModalOpen, setFollowersModalOpen] = useState(false);
   const [followersModalTab, setFollowersModalTab] = useState<"followers" | "following">("followers");
+  const [qrCodeDialogOpen, setQrCodeDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -215,6 +217,14 @@ const Profile = () => {
                   >
                     <Edit size={16} className="mr-2" />
                     Edit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="border-border text-foreground w-9 h-9"
+                    onClick={() => setQrCodeDialogOpen(true)}
+                  >
+                    <QrCode size={16} />
                   </Button>
                 </div>
               </div>
@@ -388,6 +398,13 @@ const Profile = () => {
         open={logoutDialogOpen}
         onOpenChange={setLogoutDialogOpen}
         onConfirm={confirmLogout}
+      />
+
+      <QRCodeDialog
+        open={qrCodeDialogOpen}
+        onOpenChange={setQrCodeDialogOpen}
+        username={profile?.username || ""}
+        userId={user?.id || ""}
       />
 
       <BottomNav />

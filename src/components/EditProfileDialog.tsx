@@ -7,6 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Upload } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import imageCompression from 'browser-image-compression';
 
 interface Profile {
   id: string;
@@ -20,6 +22,7 @@ interface Profile {
   portfolio_url: string | null;
   tech_skills: string[] | null;
   banner_url: string | null;
+  digest_mode?: boolean;
 }
 
 interface EditProfileDialogProps {
@@ -40,6 +43,7 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, onUpdate }: Edi
     linkedin_url: profile?.linkedin_url || "",
     portfolio_url: profile?.portfolio_url || "",
     tech_skills: profile?.tech_skills?.join(", ") || "",
+    digest_mode: profile?.digest_mode || false,
   });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
@@ -54,12 +58,25 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, onUpdate }: Edi
 
       // Upload avatar if changed
       if (avatarFile) {
-        const fileExt = avatarFile.name.split('.').pop();
+        const options = {
+          maxSizeMB: 0.5,
+          maxWidthOrHeight: 500,
+          useWebWorker: true,
+        };
+
+        let compressedFile = avatarFile;
+        try {
+          compressedFile = await imageCompression(avatarFile, options);
+        } catch (error) {
+          console.error("Avatar compression failed:", error);
+        }
+
+        const fileExt = compressedFile.name.split('.').pop();
         const fileName = `${profile.id}/avatar.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
           .from('post-images')
-          .upload(fileName, avatarFile, { upsert: true });
+          .upload(fileName, compressedFile, { upsert: true });
 
         if (uploadError) throw uploadError;
 
@@ -75,12 +92,25 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, onUpdate }: Edi
 
       // Upload banner if changed
       if (bannerFile) {
-        const fileExt = bannerFile.name.split('.').pop();
+        const options = {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1500,
+          useWebWorker: true,
+        };
+
+        let compressedFile = bannerFile;
+        try {
+          compressedFile = await imageCompression(bannerFile, options);
+        } catch (error) {
+          console.error("Banner compression failed:", error);
+        }
+
+        const fileExt = compressedFile.name.split('.').pop();
         const fileName = `${profile.id}/banner.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
           .from('post-images')
-          .upload(fileName, bannerFile, { upsert: true });
+          .upload(fileName, compressedFile, { upsert: true });
 
         if (uploadError) throw uploadError;
 
@@ -104,6 +134,7 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, onUpdate }: Edi
           tech_skills: formData.tech_skills.split(',').map(s => s.trim()).filter(Boolean),
           avatar_url: avatarUrl,
           banner_url: bannerUrl,
+          digest_mode: formData.digest_mode,
         })
         .eq('id', profile!.id);
 
@@ -286,6 +317,19 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, onUpdate }: Edi
               value={formData.portfolio_url}
               onChange={(e) => setFormData({ ...formData, portfolio_url: e.target.value })}
               placeholder="https://yourwebsite.com"
+            />
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <Label className="text-base">Daily Digest</Label>
+              <p className="text-sm text-muted-foreground">
+                Receive a single daily notification instead of immediate alerts.
+              </p>
+            </div>
+            <Switch
+              checked={formData.digest_mode}
+              onCheckedChange={(checked) => setFormData({ ...formData, digest_mode: checked })}
             />
           </div>
 
