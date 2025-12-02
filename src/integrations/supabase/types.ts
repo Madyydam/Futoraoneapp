@@ -16,39 +16,24 @@ export type Database = {
     Tables: {
       blocks: {
         Row: {
-          id: string
-          blocker_id: string
           blocked_id: string
-          created_at: string
+          blocker_id: string
+          created_at: string | null
+          id: string
         }
         Insert: {
-          id?: string
-          blocker_id: string
           blocked_id: string
-          created_at?: string
+          blocker_id: string
+          created_at?: string | null
+          id?: string
         }
         Update: {
-          id?: string
-          blocker_id?: string
           blocked_id?: string
-          created_at?: string
+          blocker_id?: string
+          created_at?: string | null
+          id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "blocks_blocker_id_fkey"
-            columns: ["blocker_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "blocks_blocked_id_fkey"
-            columns: ["blocked_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       collection_items: {
         Row: {
@@ -477,6 +462,7 @@ export type Database = {
           full_name: string
           github_url: string | null
           id: string
+          is_verified: boolean | null
           linkedin_url: string | null
           location: string | null
           one_signal_player_id: string | null
@@ -486,6 +472,7 @@ export type Database = {
           username: string
           is_verified?: boolean | null
           is_admin?: boolean | null
+          verification_category: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -495,6 +482,7 @@ export type Database = {
           full_name: string
           github_url?: string | null
           id: string
+          is_verified?: boolean | null
           linkedin_url?: string | null
           location?: string | null
           one_signal_player_id?: string | null
@@ -504,6 +492,7 @@ export type Database = {
           username: string
           is_verified?: boolean | null
           is_admin?: boolean | null
+          verification_category?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -513,6 +502,7 @@ export type Database = {
           full_name?: string
           github_url?: string | null
           id?: string
+          is_verified?: boolean | null
           linkedin_url?: string | null
           location?: string | null
           one_signal_player_id?: string | null
@@ -522,6 +512,7 @@ export type Database = {
           username?: string
           is_verified?: boolean | null
           is_admin?: boolean | null
+          verification_category?: string | null
         }
         Relationships: []
       }
@@ -927,6 +918,60 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      verification_requests: {
+        Row: {
+          category: string
+          created_at: string | null
+          id: string
+          reason: string
+          reviewed_at: string | null
+          reviewer_notes: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          id?: string
+          reason: string
+          reviewed_at?: string | null
+          reviewer_notes?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          id?: string
+          reason?: string
+          reviewed_at?: string | null
+          reviewer_notes?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       video_calls: {
         Row: {
           callee_id: string
@@ -978,9 +1023,16 @@ export type Database = {
     }
     Functions: {
       delete_expired_stories: { Args: never; Returns: undefined }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1107,6 +1159,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
