@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogOut, Github, Linkedin, Globe, MapPin, Edit, Eye } from "lucide-react";
+import { LogOut, Github, Linkedin, Globe, MapPin, Edit, Eye, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 import type { User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +18,7 @@ import { ProfileProjects } from "@/components/ProfileProjects";
 import { ProfilePosts } from "@/components/ProfilePosts";
 import { ModeToggle } from "@/components/mode-toggle";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 interface Profile {
   id: string;
@@ -54,6 +55,7 @@ interface Post {
 const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isAdmin } = useIsAdmin();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -342,6 +344,18 @@ const Profile = () => {
               )}
             </TabsContent>
           </Tabs>
+
+          {/* Admin Dashboard Button */}
+          {isAdmin && (
+            <Button
+              onClick={() => navigate("/admin")}
+              variant="outline"
+              className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+            >
+              <Shield size={18} className="mr-2" />
+              Admin Dashboard
+            </Button>
+          )}
 
           {/* Logout Button */}
           <Button
