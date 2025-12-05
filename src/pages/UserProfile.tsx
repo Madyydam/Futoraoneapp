@@ -276,7 +276,6 @@ const UserProfile = () => {
 
         if (profileData.username?.toLowerCase() === 'sanu') {
             profileData.verification_category = 'creator';
-            profileData.theme_color = '#FFE6EA'; // Light pink
             profileData.is_verified = true;
         }
         setProfile(profileData);
