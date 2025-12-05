@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Bell, LogOut, Bot } from "lucide-react";
+import { Plus, Bell, Bot } from "lucide-react";
 import { PostSkeleton } from "@/components/PostSkeleton";
 import { BottomNav } from "@/components/BottomNav";
-import { Stories } from "@/components/Stories";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -17,80 +16,48 @@ import { useInView } from "react-intersection-observer";
 import { FeedSearch } from "@/components/FeedSearch";
 import { getPostsFromCache, savePostsToCache } from "@/utils/cache";
 
-// Demo posts for initial content
-const DEMO_POSTS = Array.from({ length: 30 }, (_, i) => ({
+// Lazy load Stories component for better initial load
+const Stories = lazy(() => import("@/components/Stories").then(m => ({ default: m.Stories })));
+
+// Demo posts content arrays - defined once outside component
+const DEMO_CONTENT = [
+  "Just deployed my first microservice architecture! 🚀 Learning so much about Docker and Kubernetes.",
+  "Anyone else excited about the new React 19 features? The compiler optimization is game-changing!",
+  "Spent the whole day debugging... turned out to be a missing semicolon. Classic programmer moment 😅",
+  "Built a real-time chat app using WebSockets and Node.js. The feeling when it works perfectly is amazing!",
+  "TypeScript is a lifesaver for large codebases. Can't imagine going back to vanilla JavaScript now.",
+  "Just passed my AWS certification! Cloud computing is the future 🌥️",
+  "Working on a machine learning project to predict stock prices. Data preprocessing is harder than expected!",
+  "Finally understood how Redux works. State management makes so much more sense now.",
+  "Best VS Code extensions? I swear by Prettier, ESLint, and GitLens. What are yours?",
+  "Refactored 500 lines of code into 50. Clean code feels so good! 💯",
+];
+
+const DEMO_IMAGES = [
+  'https://images.unsplash.com/photo-1667372393119-3d4c48d07fc9?w=400&h=225&fit=crop',
+  'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=400&h=225&fit=crop',
+  'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=400&h=225&fit=crop',
+  'https://images.unsplash.com/photo-1551650975-87deedd944c3?w=400&h=225&fit=crop',
+  'https://images.unsplash.com/photo-1627398242454-45a1465c2479?w=400&h=225&fit=crop',
+  'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400&h=225&fit=crop',
+  'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=225&fit=crop',
+  'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=225&fit=crop',
+  'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=225&fit=crop',
+  'https://images.unsplash.com/photo-1542831371-29b0f74f9713?w=400&h=225&fit=crop',
+];
+
+// Generate demo posts once at module level (not on every render)
+const DEMO_POSTS = Array.from({ length: 10 }, (_, i) => ({
   id: `demo-post-${i + 1}`,
-  content: [
-    "Just deployed my first microservice architecture! 🚀 Learning so much about Docker and Kubernetes.",
-    "Anyone else excited about the new React 19 features? The compiler optimization is game-changing!",
-    "Spent the whole day debugging... turned out to be a missing semicolon. Classic programmer moment 😅",
-    "Built a real-time chat app using WebSockets and Node.js. The feeling when it works perfectly is amazing!",
-    "TypeScript is a lifesaver for large codebases. Can't imagine going back to vanilla JavaScript now.",
-    "Just passed my AWS certification! Cloud computing is the future 🌥️",
-    "Working on a machine learning project to predict stock prices. Data preprocessing is harder than expected!",
-    "Finally understood how Redux works. State management makes so much more sense now.",
-    "Best VS Code extensions? I swear by Prettier, ESLint, and GitLens. What are yours?",
-    "Refactored 500 lines of code into 50. Clean code feels so good! 💯",
-    "GraphQL vs REST API - which do you prefer? Currently migrating to GraphQL and loving it.",
-    "Late night coding session with lots of coffee ☕ Building something cool!",
-    "Open source contribution #50! The community is so supportive and amazing.",
-    "CSS Grid and Flexbox together? Perfect layout every time. 🎨",
-    "Discovered a new algorithm that cut my API response time by 70%! Optimization is an art.",
-    "MongoDB or PostgreSQL? Still can't decide for my next project. Help!",
-    "Just learned about design patterns. Factory and Singleton are mind-blowing! 🧠",
-    "Deployed my portfolio site! Check it out and let me know what you think.",
-    "Git rebase vs merge... finally understood the difference. Game changer for clean commit history.",
-    "Building a Chrome extension to boost productivity. Beta testers needed!",
-    "Svelte is so underrated! The performance and simplicity are incredible.",
-    "Just finished a 12-hour hackathon. Exhausted but we won! 🏆",
-    "Python's async/await is powerful. Concurrent programming made easy.",
-    "Mobile-first design isn't just a trend, it's essential. 📱",
-    "Docker containers changed my development workflow completely. No more 'works on my machine' issues!",
-    "Learning system design. Scalability is more complex than I thought!",
-    "Tailwind CSS is amazing for rapid prototyping. Utility-first ftw!",
-    "Just got my first dev job offer! Dreams do come true with hard work! 🎉",
-    "Code review taught me more than any tutorial. Collaboration is key.",
-    "Working on a side project that might become a startup. Wish me luck! 🚀"
-  ][i % 30],
-  image_url: [
-    'https://images.unsplash.com/photo-1667372393119-3d4c48d07fc9?w=800&h=450&fit=crop', // Docker/containers
-    'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=800&h=450&fit=crop', // React code
-    'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=800&h=450&fit=crop', // Code on screen
-    'https://images.unsplash.com/photo-1551650975-87deedd944c3?w=800&h=450&fit=crop', // Workspace/WebSockets
-    'https://images.unsplash.com/photo-1627398242454-45a1465c2479?w=800&h=450&fit=crop', // TypeScript
-    'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&h=450&fit=crop', // Cloud computing
-    'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=450&fit=crop', // Data/ML
-    'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&h=450&fit=crop', // Code screen
-    'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&h=450&fit=crop', // VS Code
-    'https://images.unsplash.com/photo-1542831371-29b0f74f9713?w=800&h=450&fit=crop', // Clean code
-    'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&h=450&fit=crop', // API/GraphQL
-    'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&h=450&fit=crop', // Coffee coding
-    'https://images.unsplash.com/photo-1556075798-4825dfaaf498?w=800&h=450&fit=crop', // Open source
-    'https://images.unsplash.com/photo-1507721999472-8ed4421c4af2?w=800&h=450&fit=crop', // CSS/Design
-    'https://images.unsplash.com/photo-1605379399642-870262d3d051?w=800&h=450&fit=crop', // Algorithm
-    'https://images.unsplash.com/photo-1544383835-bda2bc66a55d?w=800&h=450&fit=crop', // Database
-    'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=450&fit=crop', // Design patterns
-    'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=450&fit=crop', // Portfolio
-    'https://images.unsplash.com/photo-1556075798-4825dfaaf498?w=800&h=450&fit=crop', // Git
-    'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800&h=450&fit=crop', // Chrome extension
-    'https://images.unsplash.com/photo-1619410283995-43d9134e7656?w=800&h=450&fit=crop', // Svelte/modern
-    'https://images.unsplash.com/photo-1504639725590-34d0984388bd?w=800&h=450&fit=crop', // Hackathon
-    'https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=800&h=450&fit=crop', // Python
-    'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=800&h=450&fit=crop', // Mobile-first
-    'https://images.unsplash.com/photo-1605745341075-1e8c9e3c3e0a?w=800&h=450&fit=crop', // Docker
-    'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&h=450&fit=crop', // System design
-    'https://images.unsplash.com/photo-1587620962725-abab7fe55159?w=800&h=450&fit=crop', // Tailwind
-    'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&h=450&fit=crop', // Job offer
-    'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800&h=450&fit=crop', // Code review
-    'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&h=450&fit=crop'  // Startup
-  ][i % 30],
+  content: DEMO_CONTENT[i],
+  image_url: DEMO_IMAGES[i],
   video_url: null,
-  user_id: `test-user-${(i % 30) + 1}`,
-  created_at: new Date(Date.now() - (30 - i) * 24 * 60 * 60 * 1000).toISOString(),
+  user_id: `test-user-${i + 1}`,
+  created_at: new Date(Date.now() - (10 - i) * 24 * 60 * 60 * 1000).toISOString(),
   profiles: {
-    username: `Testing ${(i % 30) + 1}`,
-    full_name: `Testing ${(i % 30) + 1}`,
-    avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=Testing${(i % 30) + 1}`,
+    username: `TechUser${i + 1}`,
+    full_name: `Tech User ${i + 1}`,
+    avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=Tech${i + 1}`,
     is_verified: false
   },
   likes: [],
@@ -502,9 +469,11 @@ const Feed = () => {
       <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6 pb-24">
         <FeedSearch posts={posts} onFilteredPostsChange={setFilteredPosts} />
 
-        {/* Stories */}
+        {/* Stories - Lazy loaded */}
         <div className="mb-6">
-          <Stories />
+          <Suspense fallback={<div className="h-24 bg-muted/50 rounded-lg animate-pulse" />}>
+            <Stories />
+          </Suspense>
         </div>
 
         {/* Create Post Button */}
