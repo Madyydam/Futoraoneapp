@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, TrendingUp, Code, Brain, Shield, Cloud, Cpu, Blocks, Users } from "lucide-react";
+import { Search, TrendingUp, Code, Brain, Shield, Cloud, Cpu, Blocks, Users, Smartphone, Database } from "lucide-react";
 import { motion } from "framer-motion";
 import { BottomNav } from "@/components/BottomNav";
 import { useToast } from "@/hooks/use-toast";
@@ -34,6 +34,8 @@ const CATEGORIES = [
   { name: "Cloud", icon: Cloud, color: "bg-purple-500" },
   { name: "Robotics", icon: Cpu, color: "bg-yellow-500" },
   { name: "Blockchain", icon: Blocks, color: "bg-orange-500" },
+  { name: "Mobile Dev", icon: Smartphone, color: "bg-pink-500" },
+  { name: "Data Science", icon: Database, color: "bg-teal-500" },
 ];
 
 const TRENDING_TOPICS = [
@@ -42,26 +44,41 @@ const TRENDING_TOPICS = [
   { tag: "Python", posts: "3.2K" },
   { tag: "DevOps", posts: "1.5K" },
   { tag: "MachineLearning", posts: "2.9K" },
+  { tag: "Rust", posts: "1.2K" },
+  { tag: "Web3", posts: "2.1K" },
+  { tag: "DataScience", posts: "1.9K" },
 ];
 
 const TRENDING_PROJECTS = [
   {
     title: "AI Image Generator",
-    author: "Sarah Chen",
+    author: "Saanvi Iyer",
     likes: 342,
     tech: ["Python", "TensorFlow", "React"],
   },
   {
     title: "Blockchain Voting System",
-    author: "Mike Johnson",
+    author: "Arjun Kapoor",
     likes: 289,
     tech: ["Solidity", "Web3", "Node.js"],
   },
   {
     title: "Real-time Chat App",
-    author: "Emma Davis",
+    author: "Diya Malhotra",
     likes: 456,
     tech: ["WebSocket", "React", "Express"],
+  },
+  {
+    title: "Smart Home Dashboard",
+    author: "Vihaan Nair",
+    likes: 234,
+    tech: ["IoT", "Vue.js", "MQTT"],
+  },
+  {
+    title: "DeFi Exchange",
+    author: "Ishaan Gupta",
+    likes: 567,
+    tech: ["Solidity", "React", "Ethers.js"],
   },
 ];
 
