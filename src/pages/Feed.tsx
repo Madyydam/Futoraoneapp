@@ -99,7 +99,10 @@ const Feed = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [filteredPosts, setFilteredPosts] = useState<Post[] | null>(null);
+  // Optimize static widgets with useMemo to prevent re-renders
+  const gamificationWidget = useMemo(() => <GamificationWidget />, []);
+  const aiMentor = useMemo(() => <AIMentor />, []);
+  const bottomNav = useMemo(() => <BottomNav />, []);
 
   useEffect(() => {
     // Check authentication
@@ -405,6 +408,7 @@ const Feed = () => {
       toast({
         title: "Link copied!",
         description: "Share link copied to clipboard.",
+        timeout: 2000,
       });
     }
   }, [toast]);
@@ -431,8 +435,6 @@ const Feed = () => {
     await supabase.auth.signOut();
     navigate("/");
   };
-
-  const postsToDisplay = filteredPosts ?? posts;
 
   if (loading) {
     return (
@@ -492,18 +494,18 @@ const Feed = () => {
 
         {/* Gamification Widget */}
         <div className="mb-6">
-          <GamificationWidget />
+          {gamificationWidget}
         </div>
 
         {/* Posts */}
         <div className="space-y-6">
-          {postsToDisplay.length === 0 && !loading ? (
+          {posts.length === 0 && !loading ? (
             <Card className="p-12 text-center">
               <p className="text-muted-foreground">No posts found.</p>
             </Card>
           ) : (
             <>
-              {postsToDisplay.map((post, index) => (
+              {posts.map((post, index) => (
                 <FeedPost
                   key={post.id}
                   post={post}
@@ -515,7 +517,7 @@ const Feed = () => {
                   index={index}
                 />
               ))}
-              {hasMore && !filteredPosts && (
+              {hasMore && (
                 <div ref={ref} className="py-4">
                   <PostSkeleton />
                 </div>
@@ -525,10 +527,10 @@ const Feed = () => {
         </div>
       </main>
 
-      <BottomNav />
+      {bottomNav}
 
       {/* AI Mentor Floating Button */}
-      <AIMentor />
+      {aiMentor}
     </div>
   );
 };
