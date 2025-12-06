@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Bell, Bot } from "lucide-react";
+import { Bell, Bot, Zap } from "lucide-react";
 import { PostSkeleton } from "@/components/PostSkeleton";
 import { BottomNav } from "@/components/BottomNav";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,7 +13,7 @@ import { sendPushNotification } from "@/utils/notifications";
 import { FeedPost } from "@/components/FeedPost";
 import { ModeToggle } from "@/components/mode-toggle";
 import { useInView } from "react-intersection-observer";
-import { FeedSearch } from "@/components/FeedSearch";
+
 import { getPostsFromCache, savePostsToCache } from "@/utils/cache";
 import GamificationWidget from "@/components/GamificationWidget";
 import AIMentor from "@/components/AIMentor";
@@ -465,7 +465,7 @@ const Feed = () => {
               className="relative w-12 h-12 mr-2 animate-blink-glow bg-primary/10 rounded-full hover:bg-primary/20 transition-all"
               onClick={() => navigate("/ai-tools")}
             >
-              <Bot className="w-8 h-8 text-primary" />
+              <Zap className="w-8 h-8 text-primary" />
               <span className="absolute -top-1 -right-1 flex h-3 w-3">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-sky-500"></span>
@@ -481,7 +481,7 @@ const Feed = () => {
 
       {/* Main Content */}
       <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6 pb-24">
-        <FeedSearch posts={posts} onFilteredPostsChange={setFilteredPosts} />
+
 
         {/* Stories - Lazy loaded */}
         <div className="mb-6">
@@ -494,26 +494,6 @@ const Feed = () => {
         <div className="mb-6">
           <GamificationWidget />
         </div>
-
-        {/* Create Post Button */}
-        <Card className="p-6 mb-6 shadow-lg">
-          <div className="flex items-center gap-4">
-            <Avatar className="w-12 h-12 border-2 border-primary">
-              <AvatarImage src={user?.user_metadata?.avatar_url} />
-              <AvatarFallback>{user?.user_metadata?.username?.[0] || "U"}</AvatarFallback>
-            </Avatar>
-            <Button
-              variant="outline"
-              className="flex-1 justify-start text-muted-foreground hover:border-primary"
-              onClick={() => navigate("/create-post")}
-            >
-              What's on your mind?
-            </Button>
-            <Button size="icon" className="gradient-primary text-white">
-              <Plus className="w-5 h-5" />
-            </Button>
-          </div>
-        </Card>
 
         {/* Posts */}
         <div className="space-y-6">
@@ -546,7 +526,7 @@ const Feed = () => {
       </main>
 
       <BottomNav />
-      
+
       {/* AI Mentor Floating Button */}
       <AIMentor />
     </div>
