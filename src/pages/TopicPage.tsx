@@ -1,83 +1,190 @@
 import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Hash, TrendingUp } from "lucide-react";
 import { BottomNav } from "@/components/BottomNav";
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
-import { MessageSquare, ThumbsUp, Share2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useToast } from "@/hooks/use-toast";
+
+interface Post {
+    id: string;
+    content: string;
+    created_at: string;
+    profiles: {
+        username: string;
+        full_name: string;
+        avatar_url: string | null;
+    };
+    likes: { id: string }[];
+    comments: { id: string }[];
+}
 
 const TopicPage = () => {
-    const { topic } = useParams();
+    const { tag } = useParams();
     const navigate = useNavigate();
+    const { toast } = useToast();
+    const [posts, setPosts] = useState<Post[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [postCount, setPostCount] = useState(0);
+
+    useEffect(() => {
+        fetchTopicPosts();
+    }, [tag]);
+
+    const fetchTopicPosts = async () => {
+        setLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('posts')
+                .select(`
+                    id,
+                    content,
+                    created_at,
+                    profiles(username, full_name, avatar_url),
+                    likes(id),
+                    comments(id)
+                `)
+                .order('created_at', { ascending: false })
+                .limit(20);
+
+            if (error) throw error;
+
+            // Filter posts containing the hashtag
+            const filtered = data?.filter(post =>
+                post.content.toLowerCase().includes(`#${tag?.toLowerCase()}`)
+            ) || [];
+
+            setPosts(filtered);
+            setPostCount(filtered.length);
+        } catch (error) {
+            console.error("Error fetching topic posts:", error);
+            toast({
+                title: "Error loading posts",
+                description: "Could not load posts for this topic",
+                variant: "destructive"
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <div className="min-h-screen bg-background pb-20">
-            <div className="sticky top-0 z-10 bg-card border-b border-border p-4 flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-                    <ArrowLeft className="w-6 h-6" />
-                </Button>
-                <div>
-                    <h1 className="text-2xl font-bold text-foreground">#{topic}</h1>
-                    <p className="text-xs text-muted-foreground">{Math.floor(Math.random() * 5000) + 1000} posts</p>
+            {/* Header */}
+            <div className="sticky top-0 z-10 bg-card border-b border-border backdrop-blur-lg">
+                <div className="p-4">
+                    <div className="flex items-center gap-4 mb-2">
+                        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+                            <ArrowLeft className="w-6 h-6" />
+                        </Button>
+                        <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                                <Hash className="w-6 h-6 text-primary" />
+                                <h1 className="text-2xl font-bold text-foreground">{tag}</h1>
+                            </div>
+                            <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                                <TrendingUp className="w-4 h-4" />
+                                {loading ? "Loading..." : `${postCount.toLocaleString()} posts`}
+                            </p>
+                        </div>
+                        <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => {
+                                toast({
+                                    title: "Follow feature",
+                                    description: "Follow topics to see them in your feed!",
+                                });
+                            }}
+                        >
+                            Follow
+                        </Button>
+                    </div>
                 </div>
             </div>
 
+            {/* Content */}
             <div className="p-4 space-y-4">
-                {[1, 2, 3, 4, 5].map((i) => (
-                    <motion.div
-                        key={i}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.1 }}
-                    >
-                        <Card className="bg-card border-border hover:border-primary transition-all cursor-pointer">
+                {loading ? (
+                    Array(3).fill(0).map((_, i) => (
+                        <Card key={i} className="animate-pulse">
                             <CardContent className="p-4">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-purple-500" />
-                                    <span className="text-sm font-semibold">User_{Math.floor(Math.random() * 1000)}</span>
-                                    <span className="text-xs text-muted-foreground">• {i * 15}m ago</span>
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="w-10 h-10 rounded-full bg-muted" />
+                                    <div className="flex-1 space-y-2">
+                                        <div className="h-4 bg-muted rounded w-1/3" />
+                                        <div className="h-3 bg-muted rounded w-1/4" />
+                                    </div>
                                 </div>
-
-                                <h3 className="font-bold mb-2">
-                                    {topic === "ChatGPT-5" ? [
-                                        "Is ChatGPT-5 really coming next month?",
-                                        "How to optimize prompts for the new model",
-                                        "Comparing GPT-4 vs GPT-5 leaked specs",
-                                        "The impact of AI on coding jobs",
-                                        "Best use cases for the new API"
-                                    ][i - 1] :
-                                        topic === "ReactJS" ? [
-                                            "Why I switched from Vue to React",
-                                            "Understanding React Server Components",
-                                            "Best state management library in 2025?",
-                                            "React Performance Optimization Tips",
-                                            "Building a design system with Radix UI"
-                                        ][i - 1] :
-                                            `Discussion about #${topic} ${i}`}
-                                </h3>
-
-                                <p className="text-sm text-muted-foreground mb-3">
-                                    Here are some thoughts and questions I have regarding the recent updates.
-                                    What do you guys think about the new features?
-                                </p>
-
-                                <div className="flex items-center gap-4 text-muted-foreground text-xs">
-                                    <Button variant="ghost" size="sm" className="h-8 gap-1">
-                                        <ThumbsUp className="w-3 h-3" /> {Math.floor(Math.random() * 500)}
-                                    </Button>
-                                    <Button variant="ghost" size="sm" className="h-8 gap-1">
-                                        <MessageSquare className="w-3 h-3" /> {Math.floor(Math.random() * 100)}
-                                    </Button>
-                                    <Button variant="ghost" size="sm" className="h-8 gap-1">
-                                        <Share2 className="w-3 h-3" /> Share
-                                    </Button>
+                                <div className="space-y-2">
+                                    <div className="h-4 bg-muted rounded" />
+                                    <div className="h-4 bg-muted rounded w-5/6" />
                                 </div>
                             </CardContent>
                         </Card>
-                    </motion.div>
-                ))}
+                    ))
+                ) : posts.length === 0 ? (
+                    <Card>
+                        <CardContent className="p-12 text-center">
+                            <Hash className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                            <h3 className="text-lg font-semibold mb-2">No posts found</h3>
+                            <p className="text-muted-foreground mb-4">
+                                Be the first to post about #{tag}!
+                            </p>
+                            <Button onClick={() => navigate('/create')}>
+                                Create Post
+                            </Button>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    posts.map((post, index) => (
+                        <motion.div
+                            key={post.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                        >
+                            <Card className="bg-card border-2 border-black/20 dark:border-border hover:border-primary transition-all cursor-pointer">
+                                <CardContent className="p-4">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <Avatar className="w-10 h-10">
+                                            <AvatarImage src={post.profiles.avatar_url || undefined} />
+                                            <AvatarFallback className="bg-primary/10 text-primary">
+                                                {post.profiles.full_name?.[0]?.toUpperCase() || 'U'}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1">
+                                            <p className="font-semibold text-sm">{post.profiles.full_name}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                @{post.profiles.username} · {new Date(post.created_at).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <p className="text-sm mb-4 whitespace-pre-wrap">
+                                        {post.content}
+                                    </p>
+
+                                    <div className="flex items-center gap-6 text-muted-foreground text-sm">
+                                        <span className="flex items-center gap-1.5">
+                                            ❤️ {post.likes?.length || 0}
+                                        </span>
+                                        <span className="flex items-center gap-1.5">
+                                            💬 {post.comments?.length || 0}
+                                        </span>
+                                        <span className="flex items-center gap-1.5">
+                                            🔁 {Math.floor(Math.random() * 50)}
+                                        </span>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </motion.div>
+                    ))
+                )}
             </div>
 
             <BottomNav />

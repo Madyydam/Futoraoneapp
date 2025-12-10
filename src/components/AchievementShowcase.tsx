@@ -148,22 +148,64 @@ export const AchievementShowcase = ({ userId }: { userId?: string }) => {
         }
     };
 
+    // Enhanced animation variants
     const containerVariants = {
-        hidden: { opacity: 0 },
+        hidden: { opacity: 0, scale: 0.95 },
         visible: {
             opacity: 1,
+            scale: 1,
             transition: {
-                staggerChildren: 0.1
+                staggerChildren: 0.08,
+                delayChildren: 0.1,
+                duration: 0.3
             }
+        },
+        exit: {
+            opacity: 0,
+            scale: 0.95,
+            transition: { duration: 0.2 }
         }
     };
 
     const itemVariants = {
-        hidden: { y: 20, opacity: 0 },
+        hidden: { y: 30, opacity: 0, scale: 0.8, rotateX: -15 },
         visible: {
             y: 0,
             opacity: 1,
-            transition: { type: "spring", stiffness: 300, damping: 24 }
+            scale: 1,
+            rotateX: 0,
+            transition: {
+                type: "spring",
+                stiffness: 400,
+                damping: 25,
+                mass: 0.8
+            }
+        }
+    };
+
+    const badgeHoverVariants = {
+        rest: { scale: 1, rotateY: 0 },
+        hover: {
+            scale: 1.05,
+            rotateY: 5,
+            transition: {
+                type: "spring",
+                stiffness: 400,
+                damping: 10
+            }
+        }
+    };
+
+    const shineVariants = {
+        initial: { x: '-100%' },
+        animate: {
+            x: '200%',
+            transition: {
+                repeat: Infinity,
+                duration: 3,
+                ease: "linear",
+                repeatDelay: 5
+            }
         }
     };
 
@@ -232,51 +274,125 @@ export const AchievementShowcase = ({ userId }: { userId?: string }) => {
                             variants={containerVariants}
                             initial="hidden"
                             animate="visible"
-                            exit={{ opacity: 0, x: -20 }}
+                            exit="exit"
                             className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+                            style={{ perspective: 1000 }}
                         >
                             {loading ? (
                                 // Skeleton loading state
                                 Array(4).fill(0).map((_, i) => (
-                                    <div key={i} className="h-32 bg-muted/10 rounded-xl animate-pulse" />
+                                    <motion.div
+                                        key={i}
+                                        className="h-32 bg-muted/10 rounded-xl overflow-hidden"
+                                        animate={{ opacity: [0.4, 0.8, 0.4] }}
+                                        transition={{ duration: 1.5, repeat: Infinity }}
+                                    />
                                 ))
-                            ) : achievements.map((achievement) => {
+                            ) : achievements.map((achievement, index) => {
                                 const IconComponent = IconMap[achievement.icon_name] || Award;
                                 return (
-                                    <motion.div key={achievement.id} variants={itemVariants}>
-                                        <div className={`
-                                            relative p-4 rounded-xl border transition-all duration-300 group
+                                    <motion.div
+                                        key={achievement.id}
+                                        variants={itemVariants}
+                                        initial="rest"
+                                        whileHover={achievement.unlocked_at ? "hover" : "rest"}
+                                        custom={index}
+                                    >
+                                        <motion.div
+                                            variants={badgeHoverVariants}
+                                            className={`
+                                            relative p-4 rounded-xl border transition-all duration-300 overflow-hidden
                                             ${achievement.unlocked_at
-                                                ? 'bg-gradient-to-br from-primary/10 to-purple-500/10 border-primary/20 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/20'
-                                                : 'bg-muted/5 border-muted/20 grayscale opacity-70'}
-                                        `}>
-                                            <div className="absolute top-2 right-2">
+                                                    ? 'bg-gradient-to-br from-primary/10 via-purple-500/10 to-pink-500/10 border-primary/30 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/30 cursor-pointer'
+                                                    : 'bg-muted/5 border-muted/20 grayscale opacity-60'}
+                                        `}
+                                        >
+                                            {/* Shine effect for unlocked badges */}
+                                            {achievement.unlocked_at && (
+                                                <motion.div
+                                                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                                                    variants={shineVariants}
+                                                    initial="initial"
+                                                    animate="animate"
+                                                    style={{ skewX: -20 }}
+                                                />
+                                            )}
+
+                                            {/* Sparkle particles for hover */}
+                                            {achievement.unlocked_at && (
+                                                <>
+                                                    <motion.div
+                                                        className="absolute top-2 left-2 w-1 h-1 bg-yellow-400 rounded-full"
+                                                        animate={{
+                                                            scale: [0, 1.5, 0],
+                                                            opacity: [0, 1, 0]
+                                                        }}
+                                                        transition={{
+                                                            duration: 2,
+                                                            repeat: Infinity,
+                                                            delay: index * 0.3
+                                                        }}
+                                                    />
+                                                    <motion.div
+                                                        className="absolute bottom-3 right-3 w-1 h-1 bg-pink-400 rounded-full"
+                                                        animate={{
+                                                            scale: [0, 1.5, 0],
+                                                            opacity: [0, 1, 0]
+                                                        }}
+                                                        transition={{
+                                                            duration: 2,
+                                                            repeat: Infinity,
+                                                            delay: index * 0.3 + 1
+                                                        }}
+                                                    />
+                                                </>
+                                            )}
+
+                                            <div className="absolute top-2 right-2 z-10">
                                                 {achievement.unlocked_at ? (
-                                                    <Star className="w-4 h-4 text-yellow-500 fill-yellow-500 animate-pulse" />
+                                                    <motion.div
+                                                        animate={{
+                                                            rotate: [0, 10, -10, 0],
+                                                            scale: [1, 1.1, 1]
+                                                        }}
+                                                        transition={{
+                                                            duration: 2,
+                                                            repeat: Infinity,
+                                                            repeatDelay: 3
+                                                        }}
+                                                    >
+                                                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500 drop-shadow-lg" />
+                                                    </motion.div>
                                                 ) : (
                                                     <Lock className="w-4 h-4 text-muted-foreground" />
                                                 )}
                                             </div>
 
-                                            <div className={`
-                                                w-12 h-12 rounded-full flex items-center justify-center mb-3 text-2xl
-                                                ${achievement.unlocked_at ? 'bg-primary/20' : 'bg-muted'}
-                                            `}>
-                                                <IconComponent className={`w-6 h-6 ${achievement.unlocked_at ? 'text-primary' : 'text-muted-foreground'}`} />
-                                            </div>
+                                            <motion.div
+                                                className={`
+                                                w-12 h-12 rounded-full flex items-center justify-center mb-3
+                                                ${achievement.unlocked_at ? 'bg-gradient-to-br from-primary/30 to-purple-500/30' : 'bg-muted'}
+                                            `}
+                                                whileHover={achievement.unlocked_at ? {
+                                                    scale: 1.1,
+                                                    rotateZ: 360,
+                                                    transition: { duration: 0.6 }
+                                                } : {}}
+                                            >
+                                                <IconComponent className={`w-6 h-6 ${achievement.unlocked_at ? 'text-primary drop-shadow-lg' : 'text-muted-foreground'}`} />
+                                            </motion.div>
 
-                                            <h3 className="font-semibold text-sm mb-1">{achievement.title}</h3>
-                                            <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{achievement.description}</p>
+                                            <h3 className="font-semibold text-sm mb-1 relative z-10">{achievement.title}</h3>
+                                            <p className="text-xs text-muted-foreground mb-2 line-clamp-2 relative z-10">{achievement.description}</p>
 
-                                            <div className="flex items-center gap-1 text-xs font-medium text-orange-500">
+                                            <motion.div
+                                                className="flex items-center gap-1 text-xs font-medium text-orange-500 relative z-10"
+                                                whileHover={{ scale: 1.05 }}
+                                            >
                                                 <Zap className="w-3 h-3" />
                                                 +{achievement.xp_reward} XP
-                                            </div>
-
-                                            {achievement.unlocked_at && (
-                                                <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl pointer-events-none" />
-                                            )}
-                                        </div>
+                                            </motion.div>
+                                        </motion.div>
                                     </motion.div>
                                 );
                             })}
@@ -287,7 +403,7 @@ export const AchievementShowcase = ({ userId }: { userId?: string }) => {
                             variants={containerVariants}
                             initial="hidden"
                             animate="visible"
-                            exit={{ opacity: 0, x: 20 }}
+                            exit="exit"
                             className="space-y-4"
                         >
                             {loading ? (
