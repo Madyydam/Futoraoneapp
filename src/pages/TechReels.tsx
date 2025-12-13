@@ -24,7 +24,7 @@ const TechReels = () => {
     const MOCK_REELS: Reel[] = [
         {
             id: '1',
-            video_url: 'https://assets.mixkit.co/videos/preview/mixkit-typing-code-in-a-terminal-close-up-1650-large.mp4',
+            video_url: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
             caption: 'Mastering VS Code shortcuts in 60s! 🚀 #vscode #programming',
             likes_count: 1240,
             comments_count: 45,
@@ -33,7 +33,7 @@ const TechReels = () => {
         },
         {
             id: '2',
-            video_url: 'https://assets.mixkit.co/videos/preview/mixkit-matrix-style-code-animation-running-down-1845-large.mp4',
+            video_url: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
             caption: 'The beauty of clean code ✨ #coding #aesthetic #satisfying',
             likes_count: 850,
             comments_count: 12,
@@ -42,7 +42,7 @@ const TechReels = () => {
         },
         {
             id: '3',
-            video_url: 'https://assets.mixkit.co/videos/preview/mixkit-programmer-working-in-a-dark-room-41641-large.mp4',
+            video_url: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
             caption: 'Late night debugging sessions be like... 😅 #debugging #developer #nightowl',
             likes_count: 3200,
             comments_count: 128,
@@ -51,7 +51,7 @@ const TechReels = () => {
         },
         {
             id: '4',
-            video_url: 'https://assets.mixkit.co/videos/preview/mixkit-server-room-with-supercomputers-hardware-41643-large.mp4',
+            video_url: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
             caption: 'Inside the cloud ☁️ Data Center Tour! #server #cloud #tech',
             likes_count: 5400,
             comments_count: 300,
@@ -60,7 +60,7 @@ const TechReels = () => {
         },
         {
             id: '5',
-            video_url: 'https://assets.mixkit.co/videos/preview/mixkit-software-developer-working-at-a-computer-screen-41638-large.mp4',
+            video_url: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
             caption: 'My setup upgrade! Dual monitors is a game changer 🖥️🖥️ #setup #productivity',
             likes_count: 900,
             comments_count: 56,

@@ -25,12 +25,15 @@ export const BottomNav = React.memo(() => {
     });
   }, []);
 
-  const isActive = useCallback((path: string) => location.pathname === path, [location.pathname]);
+  const isActive = useCallback((path: string) => {
+    if (path === "/explore" && location.pathname === "/tech-reels") return true;
+    return location.pathname === path;
+  }, [location.pathname]);
 
   const handleNavigate = useCallback((path: string) => navigate(path), [navigate]);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-black/20 dark:border-border z-50 shadow-lg">
+    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-black/20 dark:border-border z-50 shadow-lg text-foreground">
       <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-around">
         <Button
           variant={isActive("/feed") ? "default" : "ghost"}
