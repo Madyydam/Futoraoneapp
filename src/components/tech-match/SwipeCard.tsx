@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, memo } from "react";
 import { motion, useMotionValue, useTransform, PanInfo } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +25,7 @@ interface SwipeCardProps {
     exitDirection?: "left" | "right" | null;
 }
 
-export const SwipeCard = ({ profile, onSwipe, exitDirection }: SwipeCardProps) => {
+export const SwipeCard = memo(({ profile, onSwipe, exitDirection }: SwipeCardProps) => {
     const x = useMotionValue(0);
     const rotate = useTransform(x, [-200, 200], [-15, 15]);
     const opacity = useTransform(x, [-200, -100, 0, 100, 200], [0, 1, 1, 1, 0]);
@@ -45,7 +45,7 @@ export const SwipeCard = ({ profile, onSwipe, exitDirection }: SwipeCardProps) =
     const exitProps = exitDirection ? {
         x: exitDirection === "left" ? -1000 : 1000,
         opacity: 0,
-        transition: { duration: 0.4, ease: "easeIn" }
+        transition: { duration: 0.4, ease: "easeIn" as const }
     } : {};
 
     return (
@@ -153,4 +153,4 @@ export const SwipeCard = ({ profile, onSwipe, exitDirection }: SwipeCardProps) =
             </Card>
         </motion.div>
     );
-};
+});

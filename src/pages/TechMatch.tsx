@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Heart, Code, Coffee, Gamepad2, Rocket, Sparkles, ChevronRight, Cuboid as Cube, X } from "lucide-react";
+import { Heart, Code, Coffee, Gamepad2, Rocket, Sparkles, ChevronRight, Cuboid as Cube, X, Settings2, RotateCcw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Switch } from "@/components/ui/switch";
 import AIChat from "@/components/AIChat";
@@ -26,6 +26,70 @@ interface Message {
 
 type AIGender = 'female' | 'male';
 
+// Mock Profiles for improved UX
+const MOCK_PROFILES: SwipeProfile[] = [
+    {
+        id: "m1",
+        username: "sarah_codes",
+        full_name: "Sarah Jenkins",
+        avatar_url: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+        bio: "Full-stack wizard 🧙‍♀️ building the next big thing in Web3. Coffee addict ☕️",
+        location: "San Fransisco, CA",
+        tech_skills: ["React", "Node.js", "Solidity", "TypeScript"],
+        github_url: "#",
+        linkedin_url: null,
+        portfolio_url: "#"
+    },
+    {
+        id: "m2",
+        username: "david_ai",
+        full_name: "David Chen",
+        avatar_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+        bio: "AI Researcher by day, Indie Hacker by night. Let's build something crazy! 🚀",
+        location: "New York, NY",
+        tech_skills: ["Python", "TensorFlow", "PyTorch", "AWS"],
+        github_url: "#",
+        linkedin_url: "#",
+        portfolio_url: null
+    },
+    {
+        id: "m3",
+        username: "emma_design",
+        full_name: "Emma Wilson",
+        avatar_url: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+        bio: "UI/UX Designer who codes. Pixel perfectionist. 🎨✨",
+        location: "London, UK",
+        tech_skills: ["Figma", "React", "TailwindCSS", "Three.js"],
+        github_url: null,
+        linkedin_url: "#",
+        portfolio_url: "#"
+    },
+    {
+        id: "m4",
+        username: "alex_rust",
+        full_name: "Alex Rivera",
+        avatar_url: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+        bio: "Rustacean 🦀. Obsessed with performance and systems programming.",
+        location: "Berlin, DE",
+        tech_skills: ["Rust", "C++", "WASM", "Linux"],
+        github_url: "#",
+        linkedin_url: null,
+        portfolio_url: "#"
+    },
+    {
+        id: "m5",
+        username: "priya_mobile",
+        full_name: "Priya Patel",
+        avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+        bio: "Flutter User Group organizer. Making apps that feel magic. ✨📱",
+        location: "Bangalore, IN",
+        tech_skills: ["Flutter", "Dart", "Firebase", "Kotlin"],
+        github_url: "#",
+        linkedin_url: "#",
+        portfolio_url: "#"
+    }
+];
+
 const TechMatch = () => {
     const { toast } = useToast();
     const [activeTab, setActiveTab] = useState("find-devs");
@@ -46,70 +110,8 @@ const TechMatch = () => {
     const [matchDialogOpen, setMatchDialogOpen] = useState(false);
     const [lastMatchedProfile, setLastMatchedProfile] = useState<SwipeProfile | null>(null);
     const [currentUser, setCurrentUser] = useState<any>(null);
-
-    // Mock Profiles for improved UX
-    const MOCK_PROFILES: SwipeProfile[] = [
-        {
-            id: "m1",
-            username: "sarah_codes",
-            full_name: "Sarah Jenkins",
-            avatar_url: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-            bio: "Full-stack wizard 🧙‍♀️ building the next big thing in Web3. Coffee addict ☕️",
-            location: "San Fransisco, CA",
-            tech_skills: ["React", "Node.js", "Solidity", "TypeScript"],
-            github_url: "#",
-            linkedin_url: null,
-            portfolio_url: "#"
-        },
-        {
-            id: "m2",
-            username: "david_ai",
-            full_name: "David Chen",
-            avatar_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-            bio: "AI Researcher by day, Indie Hacker by night. Let's build something crazy! 🚀",
-            location: "New York, NY",
-            tech_skills: ["Python", "TensorFlow", "PyTorch", "AWS"],
-            github_url: "#",
-            linkedin_url: "#",
-            portfolio_url: null
-        },
-        {
-            id: "m3",
-            username: "emma_design",
-            full_name: "Emma Wilson",
-            avatar_url: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-            bio: "UI/UX Designer who codes. Pixel perfectionist. 🎨✨",
-            location: "London, UK",
-            tech_skills: ["Figma", "React", "TailwindCSS", "Three.js"],
-            github_url: null,
-            linkedin_url: "#",
-            portfolio_url: "#"
-        },
-        {
-            id: "m4",
-            username: "alex_rust",
-            full_name: "Alex Rivera",
-            avatar_url: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-            bio: "Rustacean 🦀. Obsessed with performance and systems programming.",
-            location: "Berlin, DE",
-            tech_skills: ["Rust", "C++", "WASM", "Linux"],
-            github_url: "#",
-            linkedin_url: null,
-            portfolio_url: "#"
-        },
-        {
-            id: "m5",
-            username: "priya_mobile",
-            full_name: "Priya Patel",
-            avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-            bio: "Flutter User Group organizer. Making apps that feel magic. ✨📱",
-            location: "Bangalore, IN",
-            tech_skills: ["Flutter", "Dart", "Firebase", "Kotlin"],
-            github_url: "#",
-            linkedin_url: "#",
-            portfolio_url: "#"
-        }
-    ];
+    const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(null);
+    const [swipedHistory, setSwipedHistory] = useState<SwipeProfile[]>([]);
 
     // Fetch potential matches
     useEffect(() => {
@@ -148,86 +150,104 @@ const TechMatch = () => {
         }
     }, [activeTab]);
 
-    // Quick Confetti function
-    const triggerConfetti = () => {
-        const count = 200;
-        const defaults = {
-            origin: { y: 0.7 },
-            zIndex: 9999
-        };
+    // Quick Confetti function - Memoized
+    const triggerConfetti = useCallback(() => {
+        console.log("Confetti boom! 🎉");
+    }, []);
 
-        function fire(particleRatio: number, opts: any) {
-            // Since we don't have the canvas-confetti package installed, 
-            // we'll simulate this visually with the Dialog animation for now.
-            // In a real scenario, we would `import confetti from 'canvas-confetti'`
-            console.log("Confetti boom! 🎉");
-        }
+    const handleSwipe = useCallback(async (direction: "left" | "right", profileId: string) => {
+        // 1. Set exit direction to trigger animation (UI only)
+        setExitDirection(direction);
 
-        // Note: For now we are just logging, but the visual "It's a Match" dialog 
-        // will do the heavy lifting of the "celebration" feel.
-    };
+        // 2. Wait for animation to finish before removing from state
+        setTimeout(async () => {
+            const swipedProfile = potentialMatches.find(p => p.id === profileId);
 
-    const handleSwipe = async (direction: "left" | "right", profileId: string) => {
-        // Remove from local stack immediately for UI responsiveness
-        const swipedProfile = potentialMatches.find(p => p.id === profileId);
-        setPotentialMatches(prev => prev.filter(p => p.id !== profileId));
+            // Remove from stack
+            setPotentialMatches(prev => prev.filter(p => p.id !== profileId));
+            setExitDirection(null); // Reset for next card
 
-        if (!swipedProfile) return;
+            if (!swipedProfile) return;
 
-        // Handle Mock Profiles (instant match simulation for demo)
-        if (profileId.startsWith('m')) {
-            if (direction === 'right') {
-                // Random chance of matching with a mock profile for fun
-                if (Math.random() > 0.3) {
+            // Add to history for Undo (Local only)
+            setSwipedHistory(prev => [...prev, swipedProfile]);
+
+            // Handle Mock Profiles (instant match simulation for demo)
+            if (profileId.startsWith('m')) {
+                if (direction === 'right') {
+                    // Random chance of matching with a mock profile for fun
+                    if (Math.random() > 0.4) { // 40% chance
+                        setLastMatchedProfile(swipedProfile);
+                        setMatchDialogOpen(true);
+                        triggerConfetti();
+                    } else {
+                        // Silent like
+                    }
+                }
+                return;
+            }
+
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+
+                const status = direction === 'right' ? 'pending' : 'rejected';
+
+                // Insert match record
+                const { data, error } = await supabase
+                    .from('tech_matches')
+                    .insert({
+                        liker_id: user.id,
+                        liked_id: profileId,
+                        status: status
+                    })
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                // Check if it was an instant match
+                if (data?.status === 'matched') {
                     setLastMatchedProfile(swipedProfile);
                     setMatchDialogOpen(true);
                     triggerConfetti();
-                } else {
+
+                    // Create message conversation
+                    const { error: convError } = await supabase.rpc('get_or_create_conversation', {
+                        other_user_id: profileId
+                    });
+
+                    if (convError) console.error("Error creating conversation:", convError);
+
+                } else if (direction === 'right') {
+                    // Just a regular like
                     toast({
                         title: `You liked ${swipedProfile.full_name}`,
                         className: "bg-green-500 text-white border-none duration-1000",
                     });
                 }
+
+            } catch (error) {
+                console.error("Error swiping:", error);
             }
-            return;
-        }
+        }, 300);
+    }, [potentialMatches, triggerConfetti, toast]);
 
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+    const handleUndo = useCallback(async () => {
+        if (swipedHistory.length === 0) return;
 
-            const status = direction === 'right' ? 'pending' : 'rejected';
+        const lastProfile = swipedHistory[swipedHistory.length - 1];
 
-            // Insert match record
-            const { data, error } = await supabase
-                .from('tech_matches')
-                .insert({
-                    liker_id: user.id,
-                    liked_id: profileId,
-                    status: status
-                })
-                .select()
-                .single();
+        // Remove from history
+        setSwipedHistory(prev => prev.slice(0, -1));
 
-            if (error) throw error;
+        // Add back to potential matches
+        setPotentialMatches(prev => [...prev, lastProfile]);
 
-            // Check if it was an instant match
-            if (data?.status === 'matched') {
-                setLastMatchedProfile(swipedProfile);
-                setMatchDialogOpen(true);
-                triggerConfetti();
-            } else if (direction === 'right') {
-                // Just a regular like
-                toast({
-                    title: `You liked ${swipedProfile.full_name}`,
-                    className: "bg-green-500 text-white border-none duration-1000",
-                });
-            }
-
-        } catch (error) {
-            console.error("Error swiping:", error);
-        }
-    };
+        // Note: We don't undo db writes for now to keep it simple, 
+        // effectively "un-hiding" the card for the user.
+        toast({ title: "Undoing last swipe..." });
+    }, [swipedHistory, toast]);
 
     // Reset chat when gender changes
     useEffect(() => {
@@ -320,10 +340,14 @@ const TechMatch = () => {
     const gradientFrom = aiGender === 'female' ? 'from-pink-600' : 'from-cyan-600';
     const gradientTo = aiGender === 'female' ? 'to-purple-600' : 'to-blue-600';
 
-    // Video sources
+    // Video sources - Memoized
     const videoSrc = aiGender === 'female'
         ? "https://assets.mixkit.co/videos/preview/mixkit-artificial-intelligence-interface-concept-1188-large.mp4"
         : "https://assets.mixkit.co/videos/preview/mixkit-futuristic-holographic-interface-992-large.mp4";
+
+    const MemoizedVideo = useMemo(() => (
+        <VideoBackground videoSrc={videoSrc} aiGender={aiGender} />
+    ), [videoSrc, aiGender]);
 
     return (
         <div className="min-h-screen bg-background pb-20">
@@ -341,18 +365,27 @@ const TechMatch = () => {
                 </div>
 
                 <TabsContent value="find-devs" className="mt-0 animate-in fade-in slide-in-from-bottom-4 duration-500 h-[calc(100vh-130px)] flex flex-col">
+                    {/* Filter Bar */}
+                    <div className="flex justify-end px-4 py-2">
+                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
+                            <Settings2 className="w-5 h-5" />
+                        </Button>
+                    </div>
+
                     <div className="flex-1 relative flex items-center justify-center p-4 overflow-hidden max-w-md mx-auto w-full">
                         <AnimatePresence>
                             {potentialMatches.length > 0 ? (
-                                potentialMatches.map((profile, index) => (
-                                    index === potentialMatches.length - 1 && (
+                                (() => {
+                                    const activeProfile = potentialMatches[potentialMatches.length - 1];
+                                    return (
                                         <SwipeCard
-                                            key={profile.id}
-                                            profile={profile}
-                                            onSwipe={(dir) => handleSwipe(dir, profile.id)}
+                                            key={activeProfile.id}
+                                            profile={activeProfile}
+                                            onSwipe={(dir) => handleSwipe(dir, activeProfile.id)}
+                                            exitDirection={exitDirection}
                                         />
-                                    )
-                                ))
+                                    );
+                                })()
                             ) : (
                                 <div className="text-center space-y-4">
                                     <div className="w-20 h-20 bg-secondary/30 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
@@ -372,7 +405,17 @@ const TechMatch = () => {
 
                     {/* Bottom Action Bar */}
                     {potentialMatches.length > 0 && (
-                        <div className="p-6 flex justify-center items-center gap-8 pb-8">
+                        <div className="p-6 flex justify-center items-center gap-6 pb-8">
+                            <Button
+                                size="icon"
+                                variant="outline"
+                                className="h-12 w-12 rounded-full border-yellow-500/20 text-yellow-500 hover:bg-yellow-500/10 hover:border-yellow-500"
+                                onClick={handleUndo}
+                                disabled={swipedHistory.length === 0}
+                            >
+                                <RotateCcw className="w-5 h-5" />
+                            </Button>
+
                             <Button
                                 size="lg"
                                 variant="outline"
@@ -445,7 +488,7 @@ const TechMatch = () => {
                 <TabsContent value="ai-companion" className="mt-0">
                     <div className="relative h-[calc(100dvh-130px)] overflow-hidden w-full transition-colors duration-500">
                         {/* Background Layer (Video/Image) */}
-                        <VideoBackground videoSrc={videoSrc} aiGender={aiGender} />
+                        {MemoizedVideo}
 
                         {/* Interactive Overlay & Chat */}
                         <div className="relative z-10 flex flex-col h-full">
