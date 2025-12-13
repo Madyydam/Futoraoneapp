@@ -211,7 +211,7 @@ const Explore = () => {
               Opportunities Hub
             </h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             {/* Founders Corner Card */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -222,20 +222,21 @@ const Explore = () => {
                 className="bg-gradient-to-r from-orange-500 to-pink-600 text-white border-0 cursor-pointer overflow-hidden relative h-full hover:scale-[1.02] transition-transform duration-300"
                 onClick={() => navigate('/founders-corner')}
               >
-                <div className="absolute top-0 right-0 p-8 opacity-10">
-                  <Rocket size={120} />
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                  <Rocket size={80} />
                 </div>
-                <CardContent className="p-6 relative z-10 flex flex-col h-full justify-between">
+                <CardContent className="p-4 relative z-10 flex flex-col h-full justify-between gap-2">
                   <div>
-                    <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
-                      <Rocket className="fill-white" /> Founders Corner
+                    <h2 className="text-lg md:text-2xl font-bold mb-1 flex items-center gap-2">
+                      <Rocket className="fill-white w-5 h-5 md:w-6 md:h-6" />
+                      <span className="leading-tight">Founders Corner</span>
                     </h2>
-                    <p className="text-white/90">
+                    <p className="text-white/90 text-xs md:text-base line-clamp-3 md:line-clamp-none">
                       Find your perfect co-founder or join the next unicorn.
                     </p>
                   </div>
-                  <Button variant="secondary" className="mt-4 w-fit font-semibold text-pink-600 hover:text-pink-700">
-                    Find Co-Founders
+                  <Button variant="secondary" size="sm" className="mt-2 w-full md:w-fit font-semibold text-pink-600 hover:text-pink-700 text-xs md:text-sm h-8">
+                    Find Matches
                   </Button>
                 </CardContent>
               </Card>
@@ -251,19 +252,20 @@ const Explore = () => {
                 className="bg-gradient-to-r from-yellow-400 to-green-500 text-black border-0 cursor-pointer overflow-hidden relative h-full hover:scale-[1.02] transition-transform duration-300"
                 onClick={() => navigate('/gig-marketplace')}
               >
-                <div className="absolute top-0 right-0 p-8 opacity-10">
-                  <Zap size={120} />
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                  <Zap size={80} />
                 </div>
-                <CardContent className="p-6 relative z-10 flex flex-col h-full justify-between">
+                <CardContent className="p-4 relative z-10 flex flex-col h-full justify-between gap-2">
                   <div>
-                    <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
-                      <Zap className="fill-black" /> Gig Marketplace
+                    <h2 className="text-lg md:text-2xl font-bold mb-1 flex items-center gap-2">
+                      <Zap className="fill-black w-5 h-5 md:w-6 md:h-6" />
+                      <span className="leading-tight">Gig Market</span>
                     </h2>
-                    <p className="text-black/80 font-medium">
+                    <p className="text-black/80 font-medium text-xs md:text-base line-clamp-3 md:line-clamp-none">
                       Find micro-gigs, freelance tasks, and earn while you learn.
                     </p>
                   </div>
-                  <Button className="mt-4 w-fit font-bold bg-white text-green-700 hover:bg-white/90 border-0">
+                  <Button size="sm" className="mt-2 w-full md:w-fit font-bold bg-white text-green-700 hover:bg-white/90 border-0 text-xs md:text-sm h-8">
                     Find Gigs
                   </Button>
                 </CardContent>
