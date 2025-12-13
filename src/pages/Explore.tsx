@@ -272,6 +272,41 @@ const Explore = () => {
               </Card>
             </motion.div>
 
+            {/* Tech Match / Dating Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="col-span-2"
+            >
+              <Card
+                className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 cursor-pointer overflow-hidden relative hover:scale-[1.01] transition-transform duration-300"
+                onClick={() => navigate('/tech-match')}
+              >
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 p-2 opacity-10">
+                  <Heart size={100} />
+                </div>
+                <CardContent className="p-3 relative z-10 flex flex-row items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <div className="bg-white/20 p-2 rounded-full shrink-0">
+                      <Heart className="text-white w-5 h-5 fill-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-base md:text-lg font-bold flex items-center gap-2 truncate">
+                        Tech Match
+                      </h2>
+                      <p className="text-white/90 text-xs md:text-sm truncate">
+                        Find your player 2. Date other devs.
+                      </p>
+                    </div>
+                  </div>
+                  <Button size="sm" variant="secondary" className="shrink-0 font-bold text-rose-600 hover:text-rose-700 h-8 text-xs px-4">
+                    Connect
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+
 
           </div>
         </section>

@@ -48,6 +48,7 @@ const LiveCoding = lazy(() => import("./pages/LiveCoding"));
 const FoundersCorner = lazy(() => import("./pages/FoundersCorner"));
 const GigMarketplace = lazy(() => import("./pages/GigMarketplace"));
 const TechReels = lazy(() => import("./pages/TechReels"));
+const TechMatch = lazy(() => import("./pages/TechMatch"));
 const GroupChat = lazy(() => import("./pages/GroupChat"));
 
 const queryClient = new QueryClient({
@@ -111,6 +112,7 @@ const App = () => {
                 <Route path="/founders-corner" element={<FoundersCorner />} />
                 <Route path="/gig-marketplace" element={<GigMarketplace />} />
                 <Route path="/tech-reels" element={<TechReels />} />
+                <Route path="/tech-match" element={<TechMatch />} />
                 <Route path="/messages/group/:groupId" element={<GroupChat />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
