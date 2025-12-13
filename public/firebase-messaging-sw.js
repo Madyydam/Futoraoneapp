@@ -7,12 +7,12 @@ importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-comp
 // Initialize the Firebase app in the service worker by passing in
 // your app's Firebase config object.
 firebase.initializeApp({
-    apiKey: "YOUR_FIREBASE_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyCDGA-g9BnIPE4BdmS9X5PjzqRsWD11afE",
+    authDomain: "futoraone-92489.firebaseapp.com",
+    projectId: "futoraone-92489",
+    storageBucket: "futoraone-92489.firebasestorage.app",
+    messagingSenderId: "670532875984",
+    appId: "1:670532875984:web:1843189ff642c51fbd50d5"
 });
 
 // Retrieve an instance of Firebase Messaging so that it can handle background messages.

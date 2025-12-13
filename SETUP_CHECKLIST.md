@@ -15,39 +15,39 @@ Use this checklist to implement FCM notifications step-by-step.
 
 ### **Phase 1: Firebase Setup** (15 minutes)
 
-- [ ] **1.1** Go to https://console.firebase.google.com/
-- [ ] **1.2** Create new project: "FutoraOne"
-- [ ] **1.3** Add Android app with your package name
-- [ ] **1.4** Download `google-services.json`
-- [ ] **1.5** Go to Project Settings → Cloud Messaging
-- [ ] **1.6** Copy **Server Key** (save it somewhere safe)
-- [ ] **1.7** Copy **Sender ID**
-- [ ] **1.8** Go to Project Settings → General
-- [ ] **1.9** Copy all config values:
+- [x] **1.1** Go to https://console.firebase.google.com/
+- [x] **1.2** Create new project: "FutoraOne"
+- [x] **1.3** Add Android app with your package name
+- [x] **1.4** Download `google-services.json`
+- [x] **1.5** Go to Project Settings → Cloud Messaging
+- [ ] **1.6** Copy **Server Key** (save it somewhere safe) - *Requires enabling Legacy API*
+- [x] **1.7** Copy **Sender ID**
+- [x] **1.8** Go to Project Settings → General
+- [x] **1.9** Copy all config values:
    - API Key
    - Auth Domain
    - Project ID
    - Storage Bucket
    - Messaging Sender ID
    - App ID
-- [ ] **1.10** Go to Cloud Messaging → Web configuration
-- [ ] **1.11** Generate **VAPID key** (if not exists)
-- [ ] **1.12** Copy VAPID key
+- [x] **1.10** Go to Cloud Messaging → Web configuration
+- [x] **1.11** Generate **VAPID key** (if not exists)
+- [x] **1.12** Copy VAPID key
 
 ---
 
 ### **Phase 2: Install Dependencies** (5 minutes)
 
-- [ ] **2.1** Open terminal in project directory
-- [ ] **2.2** Run: `npm install firebase`
-- [ ] **2.3** Verify installation successful
+- [x] **2.1** Open terminal in project directory
+- [x] **2.2** Run: `npm install firebase`
+- [x] **2.3** Verify installation successful
 
 ---
 
 ### **Phase 3: Configure Environment** (5 minutes)
 
-- [ ] **3.1** Open `.env` file
-- [ ] **3.2** Add Firebase credentials you copied:
+- [x] **3.1** Open `.env` file
+- [x] **3.2** Add Firebase credentials you copied:
 ```env
 VITE_FIREBASE_API_KEY=your_api_key
 VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
@@ -57,17 +57,17 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 VITE_FIREBASE_APP_ID=your_app_id
 VITE_FIREBASE_VAPID_KEY=your_vapid_key
 ```
-- [ ] **3.3** Remove old OneSignal credentials from `.env`
-- [ ] **3.4** Save `.env` file
-- [ ] **3.5** Verify `.env` is in `.gitignore`
+- [x] **3.3** Remove old OneSignal credentials from `.env`
+- [x] **3.4** Save `.env` file
+- [x] **3.5** Verify `.env` is in `.gitignore`
 
 ---
 
 ### **Phase 4: Update Service Worker** (2 minutes)
 
-- [ ] **4.1** Open `public/firebase-messaging-sw.js`
-- [ ] **4.2** Replace `YOUR_FIREBASE_API_KEY` etc. with your actual values
-- [ ] **4.3** Save file
+- [x] **4.1** Open `public/firebase-messaging-sw.js`
+- [x] **4.2** Replace `YOUR_FIREBASE_API_KEY` etc. with your actual values
+- [x] **4.3** Save file
 
 ---
 
