@@ -85,35 +85,104 @@ const TechMatch = () => {
 
     return (
         <div className="min-h-screen bg-background pb-20">
-            <Tabs defaultValue="ai-companion" className="w-full" onValueChange={setActiveTab}>
+            <Tabs defaultValue="find-devs" className="w-full" onValueChange={setActiveTab}>
                 {/* Floating Tabs Header */}
                 <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b p-2 flex justify-center">
                     <TabsList className="grid w-full max-w-md grid-cols-2">
-                        <TabsTrigger value="ai-companion" className="data-[state=active]:bg-pink-500 data-[state=active]:text-white">
-                            <Cube className="w-4 h-4 mr-2" /> 3D Soulmate
-                        </TabsTrigger>
                         <TabsTrigger value="find-devs">
                             <Code className="w-4 h-4 mr-2" /> Find Devs
+                        </TabsTrigger>
+                        <TabsTrigger value="ai-companion" className="data-[state=active]:bg-pink-500 data-[state=active]:text-white">
+                            <Cube className="w-4 h-4 mr-2" /> 3D Soulmate
                         </TabsTrigger>
                     </TabsList>
                 </div>
 
-                {/* AI Companion Tab */}
-                <TabsContent value="ai-companion" className="mt-0">
-                    <div className="flex flex-col h-[calc(100vh-130px)]">
-                        {/* 3D Model Display */}
-                        <div
-                            className="relative h-[50vh] w-full bg-[#0a0a0a] overflow-hidden shrink-0 flex items-center justify-center perspective-1000"
-                            onMouseMove={is3DMode ? handleMouseMove : undefined}
-                            onMouseLeave={handleMouseLeave}
-                        >
-                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-pink-900/20 via-[#0a0a0a] to-[#0a0a0a]" />
-
-                            {/* 3D Tilt Container */}
+                {/* Find Devs Tab (Original Design Restored) */}
+                <TabsContent value="find-devs" className="mt-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="relative h-[40vh] bg-gradient-to-br from-pink-600 via-rose-500 to-orange-400 overflow-hidden flex items-center justify-center text-center px-4">
+                        <div className="absolute inset-0 bg-black/10" />
+                        <div className="relative z-10 text-white space-y-4 max-w-lg pt-10">
                             <motion.div
-                                style={{
-                                    rotateX: is3DMode ? rotateX : 0,
-                                    rotateY: is3DMode ? rotateY : 0,
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                                className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center mx-auto ring-4 ring-white/30"
+                            >
+                                <Heart className="w-10 h-10 text-white fill-white" />
+                            </motion.div>
+                            <motion.h1
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                                className="text-4xl md:text-5xl font-bold tracking-tight"
+                            >
+                                Tech Match
+                            </motion.h1>
+                            <motion.p
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.3 }}
+                                className="text-lg text-white/90 font-medium"
+                            >
+                                Find your Player 2. Date other developers.
+                            </motion.p>
+                        </div>
+                    </div>
+
+                    <div className="max-w-md mx-auto -mt-10 px-4 relative z-20 space-y-6">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.4 }}
+                        >
+                            <Card className="border-border shadow-lg">
+                                <CardContent className="p-6 text-center space-y-4">
+                                    <h2 className="text-xl font-bold">Why match with a dev?</h2>
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div className="flex flex-col items-center gap-2 p-3 bg-secondary/50 rounded-xl">
+                                            <Code className="text-primary" />
+                                            <span>Code Together</span>
+                                        </div>
+                                        <div className="flex flex-col items-center gap-2 p-3 bg-secondary/50 rounded-xl">
+                                            <Coffee className="text-orange-500" />
+                                            <span>Coffee runs</span>
+                                        </div>
+                                        <div className="flex flex-col items-center gap-2 p-3 bg-secondary/50 rounded-xl">
+                                            <Gamepad2 className="text-purple-500" />
+                                            <span>Gaming Duo</span>
+                                        </div>
+                                        <div className="flex flex-col items-center gap-2 p-3 bg-secondary/50 rounded-xl">
+                                            <Rocket className="text-pink-500" />
+                                            <span>Build Products</span>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </motion.div>
+
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.5 }}
+                        >
+                            <Card className="border-primary/20 bg-gradient-to-br from-background to-primary/5">
+                                <CardContent className="p-6">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 border-0">BETA ACCESS</Badge>
+                                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                            <Sparkles size={12} className="text-yellow-500" /> 1,240 on waitlist
+                                        </span>
+                                    </div>
+                                    <h3 className="text-lg font-bold mb-2">Join the Early Access List</h3>
+                                    <p className="text-muted-foreground text-sm mb-6">
+                                        We are strictly matching algorithms to find you the perfect code-compatible partner. Be the first to know when we launch!
+                                    </p>
+                                    <Button className="w-full font-bold bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white shadow-lg shadow-pink-500/20">
+                                        Join Waitlist <ChevronRight className="ml-2 w-4 h-4" />
+                                    </Button>
+                                </CardContent>
+                            </Card>
                                     transformStyle: "preserve-3d"
                                 }}
                                 className="relative w-full h-full flex items-center justify-center"
@@ -173,8 +242,8 @@ const TechMatch = () => {
                                             )}
                                             <div
                                                 className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm shadow-sm ${msg.sender === 'user'
-                                                        ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white rounded-tr-sm'
-                                                        : 'bg-secondary/80 backdrop-blur text-foreground rounded-tl-sm border border-white/5'
+                                                    ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white rounded-tr-sm'
+                                                    : 'bg-secondary/80 backdrop-blur text-foreground rounded-tl-sm border border-white/5'
                                                     }`}
                                             >
                                                 {msg.text}
@@ -205,63 +274,10 @@ const TechMatch = () => {
                         </div>
                     </div>
                 </TabsContent>
-
-                {/* Find Devs Tab (Original Waitlist Content) */}
-                <TabsContent value="find-devs" className="mt-0 p-4 space-y-6 max-w-md mx-auto">
-                    <div className="text-center space-y-4 pt-8">
-                        <div className="w-20 h-20 bg-gradient-to-br from-pink-500 to-orange-400 rounded-full flex items-center justify-center mx-auto shadow-xl">
-                            <Heart className="w-10 h-10 text-white fill-white" />
-                        </div>
-                        <h2 className="text-3xl font-bold">Find Real Connections</h2>
-                        <p className="text-muted-foreground">Match with developers who ship code and share coffee.</p>
-                    </div>
-
-                    <Card className="border-border shadow-lg">
-                        <CardContent className="p-6 text-center space-y-4">
-                            <h3 className="text-xl font-bold">Why match with a dev?</h3>
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div className="flex flex-col items-center gap-2 p-3 bg-secondary/50 rounded-xl">
-                                    <Code className="text-primary" />
-                                    <span>Code Together</span>
-                                </div>
-                                <div className="flex flex-col items-center gap-2 p-3 bg-secondary/50 rounded-xl">
-                                    <Coffee className="text-orange-500" />
-                                    <span>Coffee runs</span>
-                                </div>
-                                <div className="flex flex-col items-center gap-2 p-3 bg-secondary/50 rounded-xl">
-                                    <Gamepad2 className="text-purple-500" />
-                                    <span>Gaming Duo</span>
-                                </div>
-                                <div className="flex flex-col items-center gap-2 p-3 bg-secondary/50 rounded-xl">
-                                    <Rocket className="text-pink-500" />
-                                    <span>Build Products</span>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="border-primary/20 bg-gradient-to-br from-background to-primary/5">
-                        <CardContent className="p-6">
-                            <div className="flex items-center gap-3 mb-4">
-                                <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 border-0">BETA ACCESS</Badge>
-                                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                    <Sparkles size={12} className="text-yellow-500" /> 1,240 on waitlist
-                                </span>
-                            </div>
-                            <h3 className="text-lg font-bold mb-2">Join the Early Access List</h3>
-                            <p className="text-muted-foreground text-sm mb-6">
-                                We are strictly matching algorithms to find you the perfect code-compatible partner. Be the first to know when we launch!
-                            </p>
-                            <Button className="w-full font-bold bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white shadow-lg shadow-pink-500/20">
-                                Join Waitlist <ChevronRight className="ml-2 w-4 h-4" />
-                            </Button>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
             </Tabs>
 
             <BottomNav />
-        </div>
+        </div >
     );
 };
 
