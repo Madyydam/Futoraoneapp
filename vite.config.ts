@@ -41,6 +41,20 @@ export default defineConfig(({ mode }) => ({
       }
     })
   ].filter(Boolean),
+  build: {
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['@radix-ui/react-dialog', '@radix-ui/react-popover', '@radix-ui/react-tooltip', 'framer-motion'],
+          utils: ['date-fns', 'clsx', 'tailwind-merge'],
+          firebase: ['firebase/app', 'firebase/messaging', 'firebase/analytics']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

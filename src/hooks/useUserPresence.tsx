@@ -78,65 +78,71 @@ export const useUserPresence = (userId: string | undefined) => {
   return { isOnline, lastSeen };
 };
 
+
 export const useCurrentUserPresence = () => {
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setCurrentUserId(user.id);
+    let interval: NodeJS.Timeout;
+    let mounted = true;
 
-        // Set user as online
+    const setupPresence = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user || !mounted) return;
+
+      setCurrentUserId(user.id);
+
+      // Helper to update presence
+      const updatePresence = async (isOnline: boolean) => {
         const { data: existingPresence } = await supabase
           .from("user_presence")
-          .select("*")
+          .select("id")
           .eq("user_id", user.id)
           .single();
+
+        const timestamp = new Date().toISOString();
 
         if (existingPresence) {
           await supabase
             .from("user_presence")
-            .update({
-              is_online: true,
-              last_seen: new Date().toISOString(),
-            })
+            .update({ is_online: isOnline, last_seen: timestamp })
             .eq("user_id", user.id);
         } else {
-          await supabase.from("user_presence").insert({
-            user_id: user.id,
-            is_online: true,
-            last_seen: new Date().toISOString(),
-          });
-        }
-
-        // Update presence every 30 seconds
-        const interval = setInterval(async () => {
           await supabase
             .from("user_presence")
-            .update({
-              is_online: true,
-              last_seen: new Date().toISOString(),
-            })
-            .eq("user_id", user.id);
-        }, 30000);
+            .insert({ user_id: user.id, is_online: isOnline, last_seen: timestamp });
+        }
+      };
 
-        // Set offline on unmount
-        return () => {
-          clearInterval(interval);
-          supabase
-            .from("user_presence")
-            .update({
-              is_online: false,
-              last_seen: new Date().toISOString(),
-            })
-            .eq("user_id", user.id);
-        };
-      }
+      // Set initial online status
+      await updatePresence(true);
+
+      // Heartbeat every 30 seconds
+      interval = setInterval(() => {
+        if (mounted) updatePresence(true);
+      }, 30000);
     };
 
-    fetchUser();
-  }, []);
+    setupPresence();
+
+    return () => {
+      mounted = false;
+      if (interval) clearInterval(interval);
+
+      // Attempt to set offline on unmount (best effort)
+      if (currentUserId) {
+        supabase
+          .from("user_presence")
+          .update({
+            is_online: false,
+            last_seen: new Date().toISOString(),
+          })
+          .eq("user_id", currentUserId)
+          .then(() => { });
+      }
+    };
+  }, []); // Empty dependency array as intended
 
   return { currentUserId };
 };
