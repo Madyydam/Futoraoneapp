@@ -22,9 +22,10 @@ export interface Profile {
 interface SwipeCardProps {
     profile: Profile;
     onSwipe: (direction: "left" | "right") => void;
+    exitDirection?: "left" | "right" | null;
 }
 
-export const SwipeCard = ({ profile, onSwipe }: SwipeCardProps) => {
+export const SwipeCard = ({ profile, onSwipe, exitDirection }: SwipeCardProps) => {
     const x = useMotionValue(0);
     const rotate = useTransform(x, [-200, 200], [-15, 15]);
     const opacity = useTransform(x, [-200, -100, 0, 100, 200], [0, 1, 1, 1, 0]);
@@ -41,13 +42,23 @@ export const SwipeCard = ({ profile, onSwipe }: SwipeCardProps) => {
         }
     };
 
+    const exitProps = exitDirection ? {
+        x: exitDirection === "left" ? -1000 : 1000,
+        opacity: 0,
+        transition: { duration: 0.4, ease: "easeIn" }
+    } : {};
+
     return (
         <motion.div
             style={{ x, rotate, opacity }}
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
             onDragEnd={handleDragEnd}
-            className="absolute inset-0 w-full h-full p-4"
+            initial={{ scale: 0.95, opacity: 0.5, y: 0 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={exitProps}
+            className="absolute inset-0 w-full h-full p-4 cursor-grab active:cursor-grabbing"
+            whileDrag={{ scale: 1.05 }}
         >
             <Card className="w-full h-full overflow-hidden shadow-2xl border-0 bg-transparent rounded-3xl relative">
                 {/* Swipe Feedback Overlays */}
