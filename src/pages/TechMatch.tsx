@@ -18,7 +18,7 @@ interface Message {
 }
 
 const TechMatch = () => {
-    const [activeTab, setActiveTab] = useState("ai-companion");
+    const [activeTab, setActiveTab] = useState("find-devs");
     const [messages, setMessages] = useState<Message[]>([
         {
             id: '1',
@@ -183,15 +183,42 @@ const TechMatch = () => {
                                     </Button>
                                 </CardContent>
                             </Card>
+                        </motion.div>
+                    </div>
+                </TabsContent>
+
+                {/* AI Companion Tab */}
+                <TabsContent value="ai-companion" className="mt-0">
+                    <div className="flex flex-col h-[calc(100dvh-130px)]">
+                        {/* 3D Model Display - Reduced Height */}
+                        <div
+                            className="relative h-[35vh] w-full bg-[#0a0a0a] overflow-hidden shrink-0 flex items-center justify-center perspective-1000"
+                            onMouseMove={is3DMode ? handleMouseMove : undefined}
+                            onMouseLeave={handleMouseLeave}
+                        >
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-pink-900/20 via-[#0a0a0a] to-[#0a0a0a] z-0" />
+
+                            {/* Video Player Container */}
+                            <motion.div
+                                style={{
+                                    rotateX: is3DMode ? rotateX : 0,
+                                    rotateY: is3DMode ? rotateY : 0,
                                     transformStyle: "preserve-3d"
                                 }}
-                                className="relative w-full h-full flex items-center justify-center"
+                                className="relative w-full h-full flex items-center justify-center z-10"
                             >
-                                <img
-                                    src="/ai-3d-model.png"
-                                    alt="3D AI Model"
-                                    className="h-full w-auto object-contain relative z-10 drop-shadow-[0_0_30px_rgba(236,72,153,0.3)] transition-transform duration-200"
-                                />
+                                <video
+                                    autoPlay
+                                    loop
+                                    muted
+                                    playsInline
+                                    className="h-full w-full object-cover opacity-90"
+                                    poster="/ai-3d-model.png"
+                                >
+                                    <source src="https://assets.mixkit.co/videos/preview/mixkit-artificial-intelligence-interface-concept-1188-large.mp4" type="video/mp4" />
+                                    Your browser does not support the video tag.
+                                </video>
+
                                 {/* Holo-ring effect underneath */}
                                 <div className="absolute bottom-10 w-40 h-40 border-2 border-pink-500/30 rounded-full rotate-x-60 animate-[spin_10s_linear_infinite]" />
                                 <div className="absolute bottom-10 w-60 h-60 border border-cyan-500/20 rounded-full rotate-x-60 animate-[spin_7s_linear_infinite_reverse]" />
@@ -205,6 +232,10 @@ const TechMatch = () => {
                                     onClick={() => setIs3DMode(!is3DMode)}
                                 >
                                     <Cube className="w-4 h-4 mr-2" /> 3D View
+                                </Button>
+                                {/* Upload Hint - To guide user */}
+                                <Button size="sm" variant="ghost" className="text-xs text-white/50 hover:text-white hover:bg-white/10">
+                                    <Sparkles className="w-3 h-3 mr-1" /> Replace Video
                                 </Button>
                             </div>
 
@@ -242,8 +273,8 @@ const TechMatch = () => {
                                             )}
                                             <div
                                                 className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm shadow-sm ${msg.sender === 'user'
-                                                    ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white rounded-tr-sm'
-                                                    : 'bg-secondary/80 backdrop-blur text-foreground rounded-tl-sm border border-white/5'
+                                                        ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white rounded-tr-sm'
+                                                        : 'bg-secondary/80 backdrop-blur text-foreground rounded-tl-sm border border-white/5'
                                                     }`}
                                             >
                                                 {msg.text}
@@ -277,7 +308,7 @@ const TechMatch = () => {
             </Tabs>
 
             <BottomNav />
-        </div >
+        </div>
     );
 };
 
