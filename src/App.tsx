@@ -6,7 +6,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useOneSignal } from "@/hooks/useOneSignal";
+import { useFCM } from "@/hooks/useFCM";
 import { useCurrentUserPresence } from "@/hooks/useUserPresence";
 import { ThemeProvider } from "@/components/theme-provider";
 import ScrollToTop from "@/components/ScrollToTop";
@@ -64,7 +64,7 @@ const persister = createSyncStoragePersister({
 });
 
 const App = () => {
-  useOneSignal(); // Initialize OneSignal integration
+  // Note: We'll initialize FCM when user logs in via the auth flow
   useCurrentUserPresence(); // Track user online status
 
   return (

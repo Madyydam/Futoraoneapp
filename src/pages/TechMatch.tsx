@@ -1,16 +1,14 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Heart, Code, Coffee, Gamepad2, Rocket, Sparkles, ChevronRight, Send, User, Bot, Video, Cuboid as Cube } from "lucide-react";
+import { Heart, Code, Coffee, Gamepad2, Rocket, Sparkles, ChevronRight, Cuboid as Cube } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import AIChat from "@/components/AIChat";
+import VideoBackground from "@/components/VideoBackground";
 
 interface Message {
     id: string;
@@ -27,17 +25,13 @@ const TechMatch = () => {
     const [messages, setMessages] = useState<Message[]>([
         {
             id: '1',
-            text: "Hi there! I'm Aira 2.0. I'm fully rendered in 3D now. Do you like my new look?",
+            text: "Namaste! I'm Riya 2.0. I'm fully rendered in 3D now. Do you like my new look?",
             sender: 'ai',
             timestamp: new Date()
         }
     ]);
     const [inputValue, setInputValue] = useState("");
-    const messagesEndRef = useRef<HTMLDivElement>(null);
-
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    };
+    const [isTyping, setIsTyping] = useState(false);
 
     // Reset chat when gender changes
     useEffect(() => {
@@ -51,13 +45,11 @@ const TechMatch = () => {
             sender: 'ai',
             timestamp: new Date()
         }]);
+        setIsTyping(false);
     }, [aiGender]);
 
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
-
-    const handleSendMessage = () => {
+    // Optimize: useCallback for stable function reference passed to AIChat
+    const handleSendMessage = useCallback(() => {
         if (!inputValue.trim()) return;
 
         const newMessage: Message = {
@@ -69,6 +61,7 @@ const TechMatch = () => {
 
         setMessages(prev => [...prev, newMessage]);
         setInputValue("");
+        setIsTyping(true);
 
         // Mock AI response
         setTimeout(() => {
@@ -83,20 +76,20 @@ const TechMatch = () => {
                 timestamp: new Date()
             };
             setMessages(prev => [...prev, aiResponse]);
+            setIsTyping(false);
         }, 1500);
-    };
+    }, [inputValue, aiGender]);
 
     const aiName = aiGender === 'female' ? 'Riya' : 'Arjun';
     const themeColor = aiGender === 'female' ? 'pink' : 'cyan';
     const gradientFrom = aiGender === 'female' ? 'from-pink-600' : 'from-cyan-600';
     const gradientTo = aiGender === 'female' ? 'to-purple-600' : 'to-blue-600';
 
-    // Video sources
+    // Video sources - memoized implicitly as constants or string literals in JSX, but could be useMemo if calculating.
+    // For now simple strings are fine as they depend on simple state.
     const videoSrc = aiGender === 'female'
         ? "https://assets.mixkit.co/videos/preview/mixkit-artificial-intelligence-interface-concept-1188-large.mp4"
         : "https://assets.mixkit.co/videos/preview/mixkit-futuristic-holographic-interface-992-large.mp4";
-    // Using a more HUD/Cyberpunk style video for Atlas as a placeholder since specific 3D male model video might be hard to direct link without hosting.
-    // A futuristic HUD feels appropriate for a "male" tech AI vibe if a direct avatar isn't perfect.
 
     return (
         <div className="min-h-screen bg-background pb-20">
@@ -113,7 +106,7 @@ const TechMatch = () => {
                     </TabsList>
                 </div>
 
-                {/* Find Devs Tab (Original Design Restored) */}
+                {/* Find Devs Tab */}
                 <TabsContent value="find-devs" className="mt-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <div className="relative h-[40vh] bg-gradient-to-br from-pink-600 via-rose-500 to-orange-400 overflow-hidden flex items-center justify-center text-center px-4">
                         <div className="absolute inset-0 bg-black/10" />
@@ -206,28 +199,7 @@ const TechMatch = () => {
                 <TabsContent value="ai-companion" className="mt-0">
                     <div className="relative h-[calc(100dvh-130px)] overflow-hidden w-full transition-colors duration-500">
                         {/* Background Layer (Video/Image) */}
-                        <div className="absolute inset-0 z-0">
-                            <AnimatePresence mode="wait">
-                                <motion.video
-                                    key={videoSrc}
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    transition={{ duration: 0.5 }}
-                                    autoPlay
-                                    loop
-                                    muted
-                                    playsInline
-                                    className="h-full w-full object-cover"
-                                    poster={aiGender === 'female' ? "/ai-3d-model.png" : "/arjun-avatar.png"}
-                                >
-                                    <source src={videoSrc} type="video/mp4" />
-                                    Your browser does not support the video tag.
-                                </motion.video>
-                            </AnimatePresence>
-                            {/* Dark Overlay for Readability */}
-                            <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
-                        </div>
+                        <VideoBackground videoSrc={videoSrc} aiGender={aiGender} />
 
                         {/* Interactive Overlay & Chat */}
                         <div className="relative z-10 flex flex-col h-full">
@@ -252,51 +224,19 @@ const TechMatch = () => {
                                 </div>
                             </div>
 
-                            {/* Chat Area */}
-                            <ScrollArea className="flex-1 px-4">
-                                <div className="space-y-6 pb-4 pt-4">
-                                    {messages.map((msg) => (
-                                        <div
-                                            key={msg.id}
-                                            className={`flex gap-3 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                                        >
-                                            {msg.sender === 'ai' && (
-                                                <Avatar className={`w-10 h-10 border-2 border-${themeColor}-500/50 shadow-[0_0_15px_rgba(255,255,255,0.2)]`}>
-                                                    <AvatarImage src={aiGender === 'female' ? "/ai-3d-model.png" : "/arjun-avatar.png"} className="object-cover" />
-                                                    <AvatarFallback>{aiName[0]}</AvatarFallback>
-                                                </Avatar>
-                                            )}
-                                            <div
-                                                className={`max-w-[80%] px-5 py-3 rounded-2xl text-sm backdrop-blur-md shadow-lg ${msg.sender === 'user'
-                                                    ? `bg-gradient-to-r ${gradientFrom}/90 ${gradientTo}/90 text-white rounded-tr-sm border border-${themeColor}-500/30`
-                                                    : 'bg-black/40 text-white rounded-tl-sm border border-white/10'
-                                                    }`}
-                                            >
-                                                {msg.text}
-                                            </div>
-                                        </div>
-                                    ))}
-                                    <div ref={messagesEndRef} />
-                                </div>
-                            </ScrollArea>
-
-                            {/* Input Area */}
-                            <div className="p-4 bg-gradient-to-t from-black via-black/80 to-transparent">
-                                <form
-                                    className="flex gap-3 max-w-md mx-auto"
-                                    onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}
-                                >
-                                    <Input
-                                        placeholder={`Message ${aiName}...`}
-                                        className={`rounded-full bg-white/10 border-white/20 text-white placeholder:text-white/50 focus-visible:ring-${themeColor}-500 h-12 px-6 backdrop-blur-md`}
-                                        value={inputValue}
-                                        onChange={(e) => setInputValue(e.target.value)}
-                                    />
-                                    <Button type="submit" size="icon" className={`h-12 w-12 rounded-full bg-gradient-to-r ${gradientFrom} ${gradientTo} shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] transition-all shrink-0 border border-white/20`}>
-                                        <Send className="w-5 h-5 text-white" />
-                                    </Button>
-                                </form>
-                            </div>
+                            {/* Chat Area - Extracted for Performance */}
+                            <AIChat
+                                messages={messages}
+                                inputValue={inputValue}
+                                setInputValue={setInputValue}
+                                handleSendMessage={handleSendMessage}
+                                aiName={aiName}
+                                themeColor={themeColor}
+                                gradientFrom={gradientFrom}
+                                gradientTo={gradientTo}
+                                aiGender={aiGender}
+                                isTyping={isTyping}
+                            />
                         </div>
                     </div>
                 </TabsContent>
