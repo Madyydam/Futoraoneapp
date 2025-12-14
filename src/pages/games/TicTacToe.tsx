@@ -1,12 +1,3 @@
-import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { ArrowLeft, RotateCcw, Trophy, Circle, X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import confetti from "canvas-confetti";
-import { motion, AnimatePresence } from "framer-motion";
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -72,19 +63,25 @@ const TicTacToe = () => {
     }, [xIsNext, gameMode, winner]);
 
     const makeAiMove = () => {
-        let moveIndex: number;
+        if (winner) return;
+        let moveIndex: number = -1;
+
+        // Check if game is over before moving
+        if (checkWinner(board)) return;
 
         if (difficulty === "EASY") {
             // Random available move
             const available = board.map((val, idx) => val === null ? idx : null).filter(val => val !== null) as number[];
-            moveIndex = available[Math.floor(Math.random() * available.length)];
+            if (available.length > 0) {
+                moveIndex = available[Math.floor(Math.random() * available.length)];
+            }
         } else {
             // Minimax
             moveIndex = getBestMove(board);
         }
 
-        if (moveIndex !== undefined && moveIndex !== -1) {
-            handleMove(moveIndex);
+        if (moveIndex !== -1) {
+            handleMove(moveIndex, true);
         }
         setIsAiTurn(false);
     };
@@ -92,6 +89,11 @@ const TicTacToe = () => {
     const getBestMove = (currentBoard: Player[]): number => {
         let bestScore = -Infinity;
         let move = -1;
+
+        // If it's the very first move of the game (AI starts O), pick center or random corner to save computation
+        const emptySpots = currentBoard.filter(s => s === null).length;
+        if (emptySpots === 9) return 4; // Center
+        if (emptySpots === 8 && currentBoard[4] === null) return 4; // Take center if player didn't
 
         for (let i = 0; i < 9; i++) {
             if (currentBoard[i] === null) {
@@ -144,8 +146,9 @@ const TicTacToe = () => {
         }
     };
 
-    const handleMove = (i: number) => {
+    const handleMove = (i: number, isAi = false) => {
         if (winner || board[i]) return;
+        if (!isAi && isAiTurn) return;
 
         playSound('pop');
         const newBoard = [...board];
@@ -160,6 +163,7 @@ const TicTacToe = () => {
                 setScores(prev => ({ ...prev, [calculatedWinner]: prev[calculatedWinner as keyof typeof prev] + 1 }));
                 toast.success(`${calculatedWinner === 'O' && gameMode === 'AI' ? 'AI' : 'Player ' + calculatedWinner} Wins!`, { icon: "🏆" });
                 playSound('win');
+                // Only throw confetti if user wins or it's PVP
                 if (!(gameMode === 'AI' && calculatedWinner === 'O')) {
                     confetti({
                         particleCount: 150,
