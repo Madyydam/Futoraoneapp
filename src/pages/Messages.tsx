@@ -308,7 +308,7 @@ const Messages = () => {
   }, [user, fetchConversations]);
 
 
-  const filteredConversations = conversations.filter(conv => {
+  const filteredConversations = React.useMemo(() => conversations.filter(conv => {
     const matchesSearch = conv.otherUser.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       conv.otherUser.username.toLowerCase().includes(searchQuery.toLowerCase());
 
@@ -318,7 +318,7 @@ const Messages = () => {
 
     const matchesUnread = showUnreadOnly ? conv.unreadCount > 0 : true;
     return matchesSearch && matchesTab && matchesUnread;
-  });
+  }), [conversations, searchQuery, showArchived, showUnreadOnly]);
 
   return (
     <div className="min-h-screen bg-background pb-20 relative">
@@ -429,8 +429,8 @@ const Messages = () => {
                   )}
                 </motion.div>
               ) : (
-                <AnimatePresence>
-                  <div className="space-y-1 pb-4">
+                <div className="space-y-1 pb-4">
+                  <AnimatePresence initial={false}>
                     {filteredConversations.map((conv) => (
                       <ConversationItem
                         key={conv.id}
@@ -440,8 +440,8 @@ const Messages = () => {
                         onArchive={handleArchive}
                       />
                     ))}
-                  </div>
-                </AnimatePresence>
+                  </AnimatePresence>
+                </div>
               )}
             </>
           )

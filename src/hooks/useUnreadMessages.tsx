@@ -16,20 +16,21 @@ export const useUnreadMessages = (userId: string | undefined) => {
 
       if (!participations) return;
 
-      let totalUnread = 0;
+      // Count unread messages for each conversation in parallel
+      const unreadCounts = await Promise.all(
+        participations.map(async (participation) => {
+          const { count } = await supabase
+            .from("messages")
+            .select("*", { count: "exact", head: true })
+            .eq("conversation_id", participation.conversation_id)
+            .neq("sender_id", userId)
+            .gt("created_at", participation.last_read_at || "1970-01-01");
 
-      // Count unread messages for each conversation
-      for (const participation of participations) {
-        const { count } = await supabase
-          .from("messages")
-          .select("*", { count: "exact", head: true })
-          .eq("conversation_id", participation.conversation_id)
-          .neq("sender_id", userId)
-          .gt("created_at", participation.last_read_at || "1970-01-01");
+          return count || 0;
+        })
+      );
 
-        totalUnread += count || 0;
-      }
-
+      const totalUnread = unreadCounts.reduce((acc, curr) => acc + curr, 0);
       setUnreadCount(totalUnread);
     };
 
