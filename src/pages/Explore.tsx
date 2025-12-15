@@ -87,6 +87,9 @@ const Explore = () => {
   const [people, setPeople] = useState<UserProfile[]>([]);
   const [loadingPeople, setLoadingPeople] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [showResults, setShowResults] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -95,9 +98,43 @@ const Explore = () => {
     fetchPeople();
   }, []);
 
+  // Debounced search effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery.trim().length > 0) {
+        performSearch(searchQuery);
+      } else {
+        setSearchResults([]);
+        setShowResults(false);
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const fetchCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     setCurrentUser(user);
+  };
+
+  const performSearch = async (query: string) => {
+    setSearchLoading(true);
+    setShowResults(true);
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, username, full_name, avatar_url, is_verified")
+        .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
+        .limit(5);
+
+      if (!error && data) {
+        setSearchResults(data);
+      }
+    } catch (error) {
+      console.error("Search error:", error);
+    } finally {
+      setSearchLoading(false);
+    }
   };
 
   const fetchPeople = async () => {
@@ -168,6 +205,7 @@ const Explore = () => {
 
     e.preventDefault();
     if (searchQuery.trim()) {
+      setShowResults(false);
       toast({
         title: "Searching...",
         description: `Looking for "${searchQuery}"`,
@@ -177,32 +215,94 @@ const Explore = () => {
   }, [searchQuery, navigate, toast]);
 
   const handleUserClick = useCallback((userId: string) => {
+    setShowResults(false);
+    setSearchQuery("");
     navigate(`/user/${userId}`);
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-muted/30 to-background pb-20">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border p-4 supports-[backdrop-filter]:bg-background/60">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold text-foreground">Explore</h1>
-
-        </div>
-        <form onSubmit={handleSearch}>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
-            <Input
-              type="text"
-              placeholder="Search projects, topics, people..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-background border-border text-foreground"
-            />
+      <motion.div
+        className="sticky top-0 z-50 bg-card/95 backdrop-blur-lg border-b border-border p-4 shadow-sm"
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+      >
+        <div className="max-w-2xl mx-auto">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-bold gradient-text">Explore</h1>
           </div>
-        </form>
-      </div>
+          <form onSubmit={handleSearch} className="relative">
+            <div className="relative group">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors z-10" size={20} />
+              <Input
+                type="text"
+                placeholder="Search projects, topics, people..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => searchQuery && setShowResults(true)}
+                className="pl-12 pr-4 h-12 bg-background/50 border-2 border-border focus:border-primary transition-all rounded-2xl shadow-sm"
+              />
+              {searchLoading && (
+                <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                  <motion.div
+                    className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full"
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  />
+                </div>
+              )}
+            </div>
 
-      <div className="p-4 space-y-6">
+            {/* Search Results Dropdown */}
+            {showResults && searchResults.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="absolute top-full mt-2 w-full bg-card/95 backdrop-blur-lg border border-border rounded-2xl shadow-2xl overflow-hidden z-50"
+              >
+                <div className="p-2 space-y-1">
+                  {searchResults.map((user, index) => (
+                    <motion.div
+                      key={user.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      onClick={() => handleUserClick(user.id)}
+                      className="p-3 hover:bg-primary/10 rounded-xl cursor-pointer transition-all flex items-center gap-3 group"
+                    >
+                      <Avatar className="h-10 w-10 ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all">
+                        <AvatarImage src={user.avatar_url || undefined} />
+                        <AvatarFallback className="bg-gradient-to-br from-primary/20 to-secondary/20">
+                          {user.username[0]?.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-foreground truncate flex items-center gap-1">
+                          {user.full_name}
+                          <VerifiedBadge isVerified={user.is_verified} size={12} />
+                        </p>
+                        <p className="text-sm text-muted-foreground truncate">@{user.username}</p>
+                      </div>
+                      <Search className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </motion.div>
+                  ))}
+                </div>
+                <div className="p-3 border-t border-border bg-muted/30">
+                  <button
+                    type="submit"
+                    className="text-xs text-primary hover:text-primary/80 font-medium"
+                  >
+                    Press Enter to see all results for "{searchQuery}"
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </form>
+        </div>
+      </motion.div>
+
+      <div className="max-w-2xl mx-auto p-4 space-y-6">
 
         {/* Opportunities Hub */}
         <section>
