@@ -112,9 +112,18 @@ const Settings = () => {
     };
 
     const handleDeleteAccount = async () => {
-        // This usually requires a secure environment or re-auth, Supabase Admin API, or Edge Function.
-        // Client-side deleteUser is not allowed by default. We'll show a toast for now.
-        toast({ title: "Contact Support", description: "Please contact support to delete your account for security reasons.", variant: "default" });
+        // Google Play Policy compliance: allow user to initiate deletion.
+        const subject = encodeURIComponent("Account Deletion Request");
+        const body = encodeURIComponent(`Please delete my account associated with:\nEmail: ${email}\nUser ID: ${user?.id}\n\nI understand this action is irreversible.`);
+
+        // Open default email client
+        window.location.href = `mailto:support@futoraone.com?subject=${subject}&body=${body}`;
+
+        toast({
+            title: "Request Initiated",
+            description: "Opening your email app to send the deletion request.",
+            duration: 5000
+        });
     };
 
     if (loading) return <CartoonLoader />;
