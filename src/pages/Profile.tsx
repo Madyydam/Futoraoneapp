@@ -22,6 +22,7 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { QRCodeDialog } from "@/components/QRCodeDialog";
 import { CartoonLoader } from "@/components/CartoonLoader";
 import { AchievementShowcase } from "@/components/AchievementShowcase";
+import { ProfileStatsCard } from "@/components/ProfileStatsCard";
 
 interface Profile {
   id: string;
@@ -337,6 +338,14 @@ const Profile = () => {
               </CardContent>
             </Card>
           )}
+
+          {/* Stats Dashboard */}
+          <ProfileStatsCard
+            postsCount={posts.length}
+            likesReceived={posts.reduce((acc, post) => acc + post.likes.length, 0)}
+            commentsReceived={posts.reduce((acc, post) => acc + post.comments.length, 0)}
+            projectsCount={projects.length}
+          />
 
           {/* Achievement Showcase */}
           <AchievementShowcase userId={user?.id} />
