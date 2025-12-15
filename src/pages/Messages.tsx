@@ -158,11 +158,11 @@ const Messages = () => {
 
   const [showArchived, setShowArchived] = useState(false);
 
-  // ... (keep existing effects and functions) but we need to update the fetchConversations
+
   const fetchConversations = useCallback(async () => {
     if (!user) return;
     try {
-      // Fetch latest messages for each conversation
+      // Step 1: Fetch all conversation participations for current user
       const { data: conversationsData, error } = await supabase
         .from('conversation_participants')
         .select(`
@@ -173,46 +173,63 @@ const Messages = () => {
             updated_at
           )
         `)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .limit(50); // Limit to most recent 50 conversations for performance
 
       if (error) throw error;
+      if (!conversationsData || conversationsData.length === 0) {
+        setConversations([]);
+        return;
+      }
 
-      const userConversations = await Promise.all((conversationsData as any[]).map(async (cp: any) => {
-        // Fetch other participant
-        const { data: participants } = await supabase
-          .from('conversation_participants')
-          .select('profiles:user_id(id, username, full_name, avatar_url)')
-          .eq('conversation_id', cp.conversation_id)
-          .neq('user_id', user.id)
-          .single();
+      const convIds = conversationsData.map((cp: any) => cp.conversation_id);
 
-        // Fetch last message
-        const { data: lastMsg } = await supabase
+      // Step 2: Batch fetch all other participants in ONE query
+      const { data: allParticipants } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id, profiles:user_id(id, username, full_name, avatar_url)')
+        .in('conversation_id', convIds)
+        .neq('user_id', user.id);
+
+      // Step 3: Batch fetch last message for each conversation
+      const lastMessagesPromises = convIds.map(convId =>
+        supabase
           .from('messages')
-          .select('content, created_at, is_read, sender_id')
-          .eq('conversation_id', cp.conversation_id)
+          .select('conversation_id, content, created_at, is_read, sender_id')
+          .eq('conversation_id', convId)
           .order('created_at', { ascending: false })
           .limit(1)
-          .maybeSingle();
+          .maybeSingle()
+      );
+      const lastMessagesResults = await Promise.all(lastMessagesPromises);
 
-        // Calculate unread count
-        const { count } = await supabase
+      // Step 4: Batch fetch unread counts
+      const unreadCountsPromises = convIds.map(convId =>
+        supabase
           .from('messages')
           .select('*', { count: 'exact', head: true })
-          .eq('conversation_id', cp.conversation_id)
+          .eq('conversation_id', convId)
           .eq('is_read', false)
-          .neq('sender_id', user.id);
+          .neq('sender_id', user.id)
+      );
+      const unreadCountsResults = await Promise.all(unreadCountsPromises);
+
+      // Step 5: Combine all data
+      const userConversations = (conversationsData as any[]).map((cp: any, idx: number) => {
+        const participant = allParticipants?.find((p: any) => p.conversation_id === cp.conversation_id);
+        const lastMsg = lastMessagesResults[idx]?.data;
+        const unreadCount = unreadCountsResults[idx]?.count || 0;
 
         return {
           id: cp.conversation_id,
           updated_at: cp.conversations.updated_at,
           is_pinned: cp.is_pinned,
           is_archived: cp.is_archived,
-          otherUser: participants?.profiles,
+          otherUser: participant?.profiles,
           lastMessage: lastMsg,
-          unreadCount: count || 0
+          unreadCount
         };
-      }));
+      });
 
       // Sort: Pinned first, then by date
       const sorted = userConversations
