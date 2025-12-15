@@ -128,65 +128,113 @@ const Notifications = () => {
 
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-card border-b border-border p-3 sm:p-4">
-        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Notifications</h1>
-      </div>
+    <motion.div
+      className="min-h-screen bg-gradient-to-br from-muted/30 to-background pb-24"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+    >
+      {/* Header with slide-in */}
+      <motion.div
+        className="sticky top-0 z-10 bg-card/80 backdrop-blur-lg border-b border-border p-3 sm:p-4 shadow-sm"
+        initial={{ y: -50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 100 }}
+      >
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
+          <h1 className="text-xl sm:text-2xl font-bold gradient-text">Notifications</h1>
+          {notifications.length > 0 && (
+            <span className="text-xs text-muted-foreground">{notifications.filter(n => !n.is_read).length} unread</span>
+          )}
+        </div>
+      </motion.div>
 
-      <div className="p-3 sm:p-4 space-y-3">
+      <div className="max-w-2xl mx-auto p-3 sm:p-4 space-y-3">
         {loading ? (
           <CartoonLoader />
         ) : notifications.length === 0 ? (
-          <Card className="bg-card border-border">
-            <CardContent className="p-8 text-center">
-              <p className="text-muted-foreground">No notifications yet</p>
-            </CardContent>
-          </Card>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+          >
+            <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+              <CardContent className="p-12 text-center">
+                <div className="w-16 h-16 bg-muted/30 rounded-full mx-auto mb-4 flex items-center justify-center">
+                  <Heart className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <p className="text-muted-foreground font-medium">No notifications yet</p>
+                <p className="text-xs text-muted-foreground mt-1">We'll notify you when something happens</p>
+              </CardContent>
+            </Card>
+          </motion.div>
         ) : (
           notifications.map((notification, index) => {
             const Icon = getNotificationIcon(notification.type);
             return (
               <motion.div
                 key={notification.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
+                initial={{ opacity: 0, x: 50, scale: 0.95 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                transition={{
+                  delay: index * 0.05,
+                  type: "spring",
+                  stiffness: 200,
+                  damping: 20
+                }}
+                whileHover={{ scale: 1.02, x: -4 }}
+                className="group"
               >
                 <Card
-                  className={`cursor-pointer hover:border-primary transition-all bg-card border-border ${!notification.is_read ? "bg-primary/5" : ""
+                  className={`cursor-pointer hover:border-primary/50 hover:shadow-lg transition-all duration-300 bg-card/60 backdrop-blur-sm border ${!notification.is_read
+                      ? "border-primary/30 bg-primary/5 shadow-md shadow-primary/5"
+                      : "border-border/50"
                     }`}
                   onClick={() => handleNotificationClick(notification)}
                 >
-                  <CardContent className="p-3 sm:p-4">
+                  {/* Gradient overlay on hover */}
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-primary/5 to-transparent pointer-events-none rounded-lg" />
+
+                  <CardContent className="p-3 sm:p-4 relative z-10">
                     <div className="flex items-start gap-3">
-                      <div className="relative shrink-0">
-                        <Avatar className="h-10 w-10 sm:h-12 sm:w-12">
+                      <motion.div
+                        className="relative shrink-0"
+                        whileHover={{ scale: 1.1 }}
+                      >
+                        <Avatar className="h-10 w-10 sm:h-12 sm:w-12 ring-2 ring-primary/10">
                           <AvatarImage src={notification.actor?.avatar_url || undefined} />
-                          <AvatarFallback className="bg-muted text-muted-foreground">
+                          <AvatarFallback className="bg-gradient-to-br from-primary/20 to-secondary/20 text-foreground">
                             {notification.actor?.username[0]?.toUpperCase() || "?"}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-1">
+                        <motion.div
+                          className="absolute -bottom-1 -right-1 bg-card rounded-full p-1.5 shadow-sm ring-2 ring-background"
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ delay: index * 0.05 + 0.2 }}
+                        >
                           <Icon className={getIconColor(notification.type)} size={12} />
-                        </div>
-                      </div>
+                        </motion.div>
+                      </motion.div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm sm:text-base text-foreground">
-                          <span className="font-semibold inline-flex items-center gap-1">
+                          <span className="font-semibold inline-flex items-center gap-1 hover:text-primary transition-colors">
                             {notification.actor?.full_name || "Someone"}
                             <VerifiedBadge isVerified={notification.actor?.is_verified} size={14} />
                           </span>{" "}
                           <span className="text-muted-foreground">{getNotificationText(notification)}</span>
                         </p>
                         {notification.post?.content && (
-                          <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-2">
-                            {notification.post.content}
+                          <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 line-clamp-2 italic bg-muted/30 px-2 py-1 rounded-md">
+                            "{notification.post.content}"
                           </p>
                         )}
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <p className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                          </p>
+                          {!notification.is_read && (
+                            <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                          )}
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -198,7 +246,7 @@ const Notifications = () => {
       </div>
 
       <BottomNav />
-    </div>
+    </motion.div>
   );
 };
 
