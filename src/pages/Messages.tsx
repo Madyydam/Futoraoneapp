@@ -15,6 +15,14 @@ import { CreateGroupDialog } from "@/components/chat/CreateGroupDialog";
 import { GroupsList } from "@/components/chat/GroupsList";
 import { OnlineIndicator } from "@/components/OnlineIndicator";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+  ContextMenuSeparator,
+} from "@/components/ui/context-menu";
+import { Pin, PinOff, Archive as ArchiveIcon, Trash2 } from "lucide-react";
 
 interface ConversationWithDetails {
   id: string;
@@ -30,62 +38,110 @@ interface ConversationWithDetails {
     created_at: string;
   } | null;
   unreadCount: number;
+  is_pinned?: boolean;
+  is_archived?: boolean;
 }
 
-const ConversationItem = React.memo(({ conv, onClick }: { conv: ConversationWithDetails, onClick: (id: string) => void }) => (
+const ConversationItem = React.memo(({
+  conv,
+  onClick,
+  onPin,
+  onArchive
+}: {
+  conv: ConversationWithDetails,
+  onClick: (id: string) => void,
+  onPin: (id: string, current: boolean) => void,
+  onArchive: (id: string, current: boolean) => void
+}) => (
   <motion.div
+    layout
     initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, height: 0 }}
     whileHover={{ scale: 1.01 }}
     transition={{ duration: 0.2 }}
   >
-    <Card
-      className={`border-0 shadow-sm hover:shadow-md transition-all cursor-pointer bg-card/50 hover:bg-card mb-2 ${conv.unreadCount > 0 ? 'bg-primary/5 ring-1 ring-primary/10' : ''}`}
-      onClick={() => onClick(conv.id)}
-    >
-      <CardContent className="p-3 sm:p-4">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <Avatar className="h-14 w-14 border-2 border-background shadow-sm">
-              <AvatarImage src={conv.otherUser.avatar_url || undefined} className="object-cover" />
-              <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-bold">
-                {conv.otherUser.username[0]?.toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <OnlineIndicator userId={conv.otherUser.id} className="w-3.5 h-3.5 border-[3px]" />
-          </div>
+    <ContextMenu>
+      <ContextMenuTrigger>
+        <Card
+          className={`border-0 shadow-sm hover:shadow-md transition-all cursor-pointer bg-card/50 hover:bg-card mb-2 ${conv.unreadCount > 0 ? 'bg-primary/5 ring-1 ring-primary/10' : ''} ${conv.is_pinned ? 'border-l-4 border-l-primary bg-primary/5' : ''}`}
+          onClick={() => onClick(conv.id)}
+        >
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Avatar className="h-14 w-14 border-2 border-background shadow-sm">
+                  <AvatarImage src={conv.otherUser.avatar_url || undefined} className="object-cover" />
+                  <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-bold">
+                    {conv.otherUser.username[0]?.toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <OnlineIndicator userId={conv.otherUser.id} className="w-3.5 h-3.5 border-[3px]" />
+              </div>
 
-          <div className="flex-1 min-w-0 grid gap-1">
-            <div className="flex items-center justify-between">
-              <h3 className={`font-semibold text-base truncate ${conv.unreadCount > 0 ? 'text-foreground' : 'text-foreground/90'}`}>
-                {conv.otherUser.full_name}
-              </h3>
-              {conv.lastMessage && (
-                <span className={`text-xs whitespace-nowrap ${conv.unreadCount > 0 ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
-                  {formatDistanceToNow(new Date(conv.lastMessage.created_at), { addSuffix: false }).replace('about ', '')}
-                </span>
-              )}
-            </div>
+              <div className="flex-1 min-w-0 grid gap-1">
+                <div className="flex items-center justify-between">
+                  <h3 className={`font-semibold text-base truncate flex items-center gap-2 ${conv.unreadCount > 0 ? 'text-foreground' : 'text-foreground/90'}`}>
+                    {conv.otherUser.full_name}
+                    {conv.is_pinned && <Pin className="w-3.5 h-3.5 text-primary fill-primary rotate-45" />}
+                  </h3>
+                  {conv.lastMessage && (
+                    <span className={`text-xs whitespace-nowrap ${conv.unreadCount > 0 ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                      {formatDistanceToNow(new Date(conv.lastMessage.created_at), { addSuffix: false }).replace('about ', '')}
+                    </span>
+                  )}
+                </div>
 
-            <div className="flex items-center justify-between gap-2">
-              <p className={`text-sm truncate pr-2 ${conv.unreadCount > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
-                {conv.lastMessage?.content || <span className="text-muted-foreground italic">No messages yet</span>}
-              </p>
-              {conv.unreadCount > 0 && (
-                <Badge className="h-5 min-w-[1.25rem] px-1 flex items-center justify-center bg-primary text-primary-foreground text-[10px] rounded-full shadow-sm animate-in zoom-in">
-                  {conv.unreadCount}
-                </Badge>
-              )}
+                <div className="flex items-center justify-between gap-2">
+                  <p className={`text-sm truncate pr-2 ${conv.unreadCount > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                    {conv.lastMessage?.content || <span className="text-muted-foreground italic">No messages yet</span>}
+                  </p>
+                  {conv.unreadCount > 0 && (
+                    <Badge className="h-5 min-w-[1.25rem] px-1 flex items-center justify-center bg-primary text-primary-foreground text-[10px] rounded-full shadow-sm animate-in zoom-in">
+                      {conv.unreadCount}
+                    </Badge>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+          </CardContent>
+        </Card>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-48">
+        <ContextMenuItem onClick={(e) => { e.stopPropagation(); onPin(conv.id, !!conv.is_pinned); }}>
+          {conv.is_pinned ? (
+            <>
+              <PinOff className="mr-2 h-4 w-4" /> Unpin Chat
+            </>
+          ) : (
+            <>
+              <Pin className="mr-2 h-4 w-4" /> Pin Chat
+            </>
+          )}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={(e) => { e.stopPropagation(); onArchive(conv.id, !!conv.is_archived); }}>
+          {conv.is_archived ? (
+            <>
+              <ArrowLeft className="mr-2 h-4 w-4" /> Unarchive
+            </>
+          ) : (
+            <>
+              <ArchiveIcon className="mr-2 h-4 w-4" /> Archive Chat
+            </>
+          )}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem className="text-destructive focus:text-destructive">
+          <Trash2 className="mr-2 h-4 w-4" /> Delete
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   </motion.div>
 ));
 
 import { ActiveUsersList } from "@/components/chat/ActiveUsersList";
-import { MessageSquarePlus, Filter, Archive } from "lucide-react";
+import { MessageSquarePlus, Filter, Archive, ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
 
 // ... (keep existing imports)
 
@@ -100,11 +156,168 @@ const Messages = () => {
 
   // ... (keep existing effects and functions)
 
+  const [showArchived, setShowArchived] = useState(false);
+
+  // ... (keep existing effects and functions) but we need to update the fetchConversations
+  const fetchConversations = useCallback(async () => {
+    if (!user) return;
+    try {
+      // Fetch latest messages for each conversation
+      const { data: conversationsData, error } = await supabase
+        .from('conversation_participants')
+        .select(`
+          conversation_id,
+          is_pinned,
+          is_archived,
+          conversations (
+            updated_at
+          )
+        `)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      const userConversations = await Promise.all((conversationsData as any[]).map(async (cp: any) => {
+        // Fetch other participant
+        const { data: participants } = await supabase
+          .from('conversation_participants')
+          .select('profiles:user_id(id, username, full_name, avatar_url)')
+          .eq('conversation_id', cp.conversation_id)
+          .neq('user_id', user.id)
+          .single();
+
+        // Fetch last message
+        const { data: lastMsg } = await supabase
+          .from('messages')
+          .select('content, created_at, is_read, sender_id')
+          .eq('conversation_id', cp.conversation_id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        // Calculate unread count
+        const { count } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('conversation_id', cp.conversation_id)
+          .eq('is_read', false)
+          .neq('sender_id', user.id);
+
+        return {
+          id: cp.conversation_id,
+          updated_at: cp.conversations.updated_at,
+          is_pinned: cp.is_pinned,
+          is_archived: cp.is_archived,
+          otherUser: participants?.profiles,
+          lastMessage: lastMsg,
+          unreadCount: count || 0
+        };
+      }));
+
+      // Sort: Pinned first, then by date
+      const sorted = userConversations
+        .filter(c => c.otherUser) // Filter out conversations where user might be deleted
+        .sort((a, b) => {
+          if (a.is_pinned && !b.is_pinned) return -1;
+          if (!a.is_pinned && b.is_pinned) return 1;
+
+          const dateA = new Date(a.lastMessage?.created_at || a.updated_at).getTime();
+          const dateB = new Date(b.lastMessage?.created_at || b.updated_at).getTime();
+          return dateB - dateA;
+        });
+
+      setConversations(sorted as ConversationWithDetails[]);
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  // Initial Fetch
+  useEffect(() => {
+    if (user) fetchConversations();
+  }, [user, fetchConversations]);
+
+  // Realtime subscription
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase.channel('chat_updates')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'messages' },
+        () => fetchConversations())
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'conversation_participants', filter: `user_id=eq.${user.id}` },
+        () => fetchConversations())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user, fetchConversations]);
+
+  const handlePin = useCallback(async (id: string, current: boolean) => {
+    if (!user) return;
+    try {
+      // Optimistic update
+      setConversations(prev => prev.map(c =>
+        c.id === id ? { ...c, is_pinned: !current } : c
+      ).sort((a, b) => {
+        // Re-sort logic needed for optimistic
+        const isPinnedA = a.id === id ? !current : a.is_pinned;
+        const isPinnedB = b.id === id ? !current : b.is_pinned;
+        if (isPinnedA && !isPinnedB) return -1;
+        if (!isPinnedA && isPinnedB) return 1;
+        const dateA = new Date(a.lastMessage?.created_at || a.updated_at).getTime();
+        const dateB = new Date(b.lastMessage?.created_at || b.updated_at).getTime();
+        return dateB - dateA;
+      }));
+
+      const { error } = await supabase
+        .from('conversation_participants')
+        .update({ is_pinned: !current })
+        .eq('conversation_id', id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      toast.success(current ? "Chat unpinned" : "Chat pinned");
+    } catch (err) {
+      toast.error("Failed to update pin status");
+      fetchConversations(); // Revert on error
+    }
+  }, [user, fetchConversations]);
+
+  const handleArchive = useCallback(async (id: string, current: boolean) => {
+    if (!user) return;
+    try {
+      // Optimistic update
+      setConversations(prev => prev.map(c =>
+        c.id === id ? { ...c, is_archived: !current } : c
+      ));
+
+      const { error } = await supabase
+        .from('conversation_participants')
+        .update({ is_archived: !current })
+        .eq('conversation_id', id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      toast.success(current ? "Chat unarchived" : "Chat archived");
+    } catch (err) {
+      toast.error("Failed to update archive status");
+      fetchConversations();
+    }
+  }, [user, fetchConversations]);
+
+
   const filteredConversations = conversations.filter(conv => {
     const matchesSearch = conv.otherUser.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       conv.otherUser.username.toLowerCase().includes(searchQuery.toLowerCase());
+
+    // Logic: If showing archived, only show archived. If not, only show active.
+    // ALSO: If searching, search EVERYTHING (optional UX choice, here I'll stick to tabs)
+    const matchesTab = showArchived ? conv.is_archived : !conv.is_archived;
+
     const matchesUnread = showUnreadOnly ? conv.unreadCount > 0 : true;
-    return matchesSearch && matchesUnread;
+    return matchesSearch && matchesTab && matchesUnread;
   });
 
   return (
@@ -131,7 +344,7 @@ const Messages = () => {
             />
             <button
               className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-colors ${activeTab === 'direct' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/80'}`}
-              onClick={() => setActiveTab('direct')}
+              onClick={() => { setActiveTab('direct'); setShowArchived(false); }}
             >
               <MessageCircle className="w-4 h-4" />
               Direct
@@ -147,13 +360,13 @@ const Messages = () => {
 
           {/* Search & Filter Row */}
           {activeTab === 'direct' && (
-            <div className="flex gap-2">
-              <div className="relative group flex-1">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+              <div className="relative group flex-1 min-w-[150px]">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Search className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 </div>
                 <Input
-                  placeholder="Search..."
+                  placeholder={showArchived ? "Search archived..." : "Search messages..."}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 h-10 bg-secondary/50 border-transparent hover:bg-secondary/80 focus:bg-background focus:border-primary/20 rounded-full transition-all"
@@ -164,8 +377,18 @@ const Messages = () => {
                 size="icon"
                 className={`rounded-full shrink-0 ${showUnreadOnly ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-secondary'}`}
                 onClick={() => setShowUnreadOnly(!showUnreadOnly)}
+                title="Filter Unread"
               >
                 <Filter className={`w-4 h-4 ${showUnreadOnly ? 'fill-current' : ''}`} />
+              </Button>
+              <Button
+                variant={showArchived ? "default" : "outline"}
+                size="icon"
+                className={`rounded-full shrink-0 ${showArchived ? 'bg-orange-500 text-white hover:bg-orange-600' : 'bg-background hover:bg-secondary text-muted-foreground'}`}
+                onClick={() => setShowArchived(!showArchived)}
+                title={showArchived ? "View Inbox" : "View Archived"}
+              >
+                <ArchiveIcon className={`w-4 h-4 ${showArchived ? 'fill-current' : ''}`} />
               </Button>
             </div>
           )}
@@ -213,6 +436,8 @@ const Messages = () => {
                         key={conv.id}
                         conv={conv}
                         onClick={(id) => navigate(`/chat/${id}`)}
+                        onPin={handlePin}
+                        onArchive={handleArchive}
                       />
                     ))}
                   </div>

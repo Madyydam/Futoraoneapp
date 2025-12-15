@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogOut, Github, Linkedin, Globe, MapPin, Edit, Eye, Shield, QrCode } from "lucide-react";
+import { LogOut, Github, Linkedin, Globe, MapPin, Edit, Eye, Shield, QrCode, Settings } from "lucide-react";
 import { motion } from "framer-motion";
 import type { User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
@@ -227,14 +227,7 @@ const Profile = () => {
                 </div>
                 <div className="flex gap-2">
                   <ModeToggle />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-foreground"
-                    onClick={() => navigate("/profile-views")}
-                  >
-                    <Eye className="w-5 h-5" />
-                  </Button>
+
                   <Button
                     variant="outline"
                     size="sm"
@@ -248,9 +241,9 @@ const Profile = () => {
                     variant="outline"
                     size="icon"
                     className="border-border text-foreground w-9 h-9"
-                    onClick={() => setQrCodeDialogOpen(true)}
+                    onClick={() => navigate("/settings")}
                   >
-                    <QrCode size={16} />
+                    <Settings size={16} />
                   </Button>
                 </div>
               </div>

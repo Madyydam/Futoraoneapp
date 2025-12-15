@@ -59,6 +59,7 @@ const TicTacToe = lazy(() => import("./pages/games/TicTacToe"));
 const MemoryMatch = lazy(() => import("./pages/games/MemoryMatch"));
 const RockPaperScissors = lazy(() => import("./pages/games/RockPaperScissors"));
 const ConnectFour = lazy(() => import("./pages/games/ConnectFour"));
+const Settings = lazy(() => import("./pages/Settings"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -97,6 +98,7 @@ const App = () => {
                 <Route path="/explore" element={<Explore />} />
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/settings" element={<Settings />} />
                 <Route path="/user/:userId" element={<UserProfile />} />
                 <Route path="/projects" element={<Projects />} />
                 <Route path="/ai-roadmap" element={<AIRoadmap />} />

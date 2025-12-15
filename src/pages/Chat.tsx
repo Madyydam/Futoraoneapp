@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { User } from "@supabase/supabase-js";
 import { formatDistanceToNow } from "date-fns";
 import { CartoonLoader } from "@/components/CartoonLoader";
+import { useTypingIndicator } from "@/hooks/useTypingIndicator";
 
 interface Message {
   id: string;
@@ -62,10 +63,12 @@ const Chat = () => {
   const [otherUser, setOtherUser] = useState<OtherUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout>();
-  const lastTypingSentRef = useRef<number>(0);
+
+  // Use the new hook
+  const { typingUsers, broadcastTyping } = useTypingIndicator(conversationId || "", user?.id);
+  const isTyping = typingUsers.length > 0;
 
   useEffect(() => {
     checkAuth();
@@ -75,7 +78,6 @@ const Chat = () => {
     if (user && conversationId) {
       fetchConversationDetails();
       subscribeToMessages();
-      subscribeToTyping();
       markMessagesAsRead();
     }
   }, [user, conversationId]);
@@ -161,30 +163,6 @@ const Chat = () => {
     };
   };
 
-  const subscribeToTyping = () => {
-    const channel = supabase
-      .channel(`typing-${conversationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'typing_indicators',
-          filter: `conversation_id=eq.${conversationId}`
-        },
-        (payload) => {
-          const newData = payload.new as any;
-          if (newData && newData.user_id !== user?.id) {
-            setIsTyping(newData.is_typing);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  };
 
   const markMessagesAsRead = async () => {
     if (!user || !conversationId) return;
@@ -205,41 +183,6 @@ const Chat = () => {
       .neq("sender_id", user.id);
   };
 
-  const handleTyping = useCallback(async () => {
-    if (!user || !conversationId) return;
-
-    // Clear existing timeout to prevent premature "is typing: false"
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-
-    const now = Date.now();
-    // Only send "is typing" update if more than 2 seconds have passed since last update
-    if (now - lastTypingSentRef.current > 2000) {
-      lastTypingSentRef.current = now;
-      await supabase
-        .from("typing_indicators")
-        .upsert({
-          conversation_id: conversationId,
-          user_id: user.id,
-          is_typing: true,
-          updated_at: new Date().toISOString()
-        });
-    }
-
-    // Set timeout to clear typing status
-    typingTimeoutRef.current = setTimeout(async () => {
-      await supabase
-        .from("typing_indicators")
-        .upsert({
-          conversation_id: conversationId,
-          user_id: user.id,
-          is_typing: false,
-          updated_at: new Date().toISOString()
-        });
-      lastTypingSentRef.current = 0; // Reset so next type sends immediately
-    }, 3000);
-  }, [user, conversationId]);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -254,19 +197,7 @@ const Chat = () => {
       is_read: false
     });
 
-    // Clear typing indicator
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-    await supabase
-      .from("typing_indicators")
-      .upsert({
-        conversation_id: conversationId,
-        user_id: user.id,
-        is_typing: false,
-        updated_at: new Date().toISOString()
-      });
-    lastTypingSentRef.current = 0;
+
 
     if (error) {
       toast({
@@ -317,7 +248,13 @@ const Chat = () => {
                 onClick={() => navigate(`/user/${otherUser.id}`)}
               >
                 <p className="font-semibold text-foreground">{otherUser.full_name}</p>
-                <p className="text-xs text-muted-foreground">@{otherUser.username}</p>
+                <p className="text-xs text-muted-foreground">
+                  {isTyping ? (
+                    <span className="text-primary font-medium animate-pulse">Typing...</span>
+                  ) : (
+                    `@${otherUser.username}`
+                  )}
+                </p>
               </div>
             </>
           )}
@@ -354,7 +291,7 @@ const Chat = () => {
             value={newMessage}
             onChange={(e) => {
               setNewMessage(e.target.value);
-              handleTyping();
+              broadcastTyping();
             }}
             placeholder="Type a message..."
             className="flex-1 bg-background border-border"
