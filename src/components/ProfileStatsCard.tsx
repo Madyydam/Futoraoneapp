@@ -1,4 +1,3 @@
-```
 import { Card, CardContent } from "@/components/ui/card";
 import { Heart, MessageCircle, FileText, Target } from "lucide-react";
 import { motion } from "framer-motion";
@@ -51,7 +50,7 @@ export const ProfileStatsCard = ({ postsCount, likesReceived, commentsReceived, 
               className="flex-1 text-center group cursor-pointer hover:bg-muted/50 rounded-lg p-2 transition-all"
             >
               <div className="flex flex-col items-center gap-1">
-                <stat.icon className={`w - 4 h - 4 sm: w - 5 sm: h - 5 ${ stat.color } group - hover: scale - 110 transition - transform`} />
+                <stat.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${stat.color} group-hover:scale-110 transition-transform`} />
                 <p className="text-lg sm:text-xl font-bold text-foreground">{stat.value}</p>
                 <p className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wide">{stat.label}</p>
               </div>
@@ -62,4 +61,3 @@ export const ProfileStatsCard = ({ postsCount, likesReceived, commentsReceived, 
     </Card>
   );
 };
-```
