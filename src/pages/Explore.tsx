@@ -112,12 +112,12 @@ const Explore = () => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const fetchCurrentUser = async () => {
+  const fetchCurrentUser = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     setCurrentUser(user);
-  };
+  }, []);
 
-  const performSearch = async (query: string) => {
+  const performSearch = useCallback(async (query: string) => {
     setSearchLoading(true);
     setShowResults(true);
     try {
@@ -135,7 +135,7 @@ const Explore = () => {
     } finally {
       setSearchLoading(false);
     }
-  };
+  }, []);
 
   const fetchPeople = async () => {
     setLoadingPeople(true);
