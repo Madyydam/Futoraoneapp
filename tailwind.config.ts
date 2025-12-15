@@ -113,6 +113,24 @@ export default {
             transform: "translateY(-10px)"
           }
         },
+        "shine": {
+          "0%": {
+            "background-position": "200% center"
+          },
+          "100%": {
+            "background-position": "-200% center"
+          }
+        },
+        "gradient-xy": {
+          "0%, 100%": {
+            "background-size": "400% 400%",
+            "background-position": "left center"
+          },
+          "50%": {
+            "background-size": "200% 200%",
+            "background-position": "right center"
+          }
+        }
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -120,6 +138,8 @@ export default {
         "fade-in": "fade-in 0.5s ease-out",
         "scale-in": "scale-in 0.3s ease-out",
         "float": "float 3s ease-in-out infinite",
+        "shine": "shine 8s ease-in-out infinite",
+        "gradient-xy": "gradient-xy 15s ease infinite",
       },
     },
   },
