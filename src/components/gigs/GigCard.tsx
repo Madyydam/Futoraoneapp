@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, Clock } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ApplyGigDialog } from "./ApplyGigDialog";
+import { ViewGigApplicationsDialog } from "./ViewGigApplicationsDialog";
 
 export interface GigListing {
     id: string;
@@ -24,9 +25,10 @@ export interface GigListing {
 
 interface GigCardProps {
     gig: GigListing;
+    currentUserId: string | null;
 }
 
-export const GigCard = ({ gig }: GigCardProps) => {
+export const GigCard = ({ gig, currentUserId }: GigCardProps) => {
     return (
         <Card className="hover:shadow-lg transition-shadow border-2 border-transparent hover:border-yellow-500/20 group">
             <CardContent className="pt-6">
@@ -78,11 +80,18 @@ export const GigCard = ({ gig }: GigCardProps) => {
             </CardContent>
 
             <CardFooter className="pt-0 pb-4">
-                <ApplyGigDialog
-                    gigId={gig.id}
-                    gigTitle={gig.title}
-                    gigBudget={gig.price}
-                />
+                {currentUserId === gig.user_id ? (
+                    <ViewGigApplicationsDialog
+                        gigId={gig.id}
+                        gigTitle={gig.title}
+                    />
+                ) : (
+                    <ApplyGigDialog
+                        gigId={gig.id}
+                        gigTitle={gig.title}
+                        gigBudget={gig.price}
+                    />
+                )}
             </CardFooter>
         </Card>
     );

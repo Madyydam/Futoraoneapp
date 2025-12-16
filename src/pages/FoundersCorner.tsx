@@ -14,6 +14,7 @@ const FoundersCorner = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [activeFilter, setActiveFilter] = useState("All");
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const navigate = useNavigate();
 
     const fetchListings = async () => {
@@ -49,6 +50,11 @@ const FoundersCorner = () => {
     };
 
     useEffect(() => {
+        const fetchUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            setCurrentUserId(user?.id || null);
+        };
+        fetchUser();
         fetchListings();
     }, []);
 
@@ -298,7 +304,11 @@ const FoundersCorner = () => {
                     </div>
                 ) : (
                     filteredListings.map((listing) => (
-                        <FounderListingCard key={listing.id} listing={listing} />
+                        <FounderListingCard
+                            key={listing.id}
+                            listing={listing}
+                            currentUserId={currentUserId}
+                        />
                     ))
                 )}
             </div>

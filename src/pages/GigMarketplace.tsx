@@ -14,6 +14,7 @@ const GigMarketplace = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [activeFilter, setActiveFilter] = useState("All");
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const navigate = useNavigate();
 
     const fetchGigs = async () => {
@@ -49,6 +50,11 @@ const GigMarketplace = () => {
     };
 
     useEffect(() => {
+        const fetchUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            setCurrentUserId(user?.id || null);
+        };
+        fetchUser();
         fetchGigs();
     }, []);
 
@@ -287,7 +293,11 @@ const GigMarketplace = () => {
                     </div>
                 ) : (
                     filteredGigs.map((gig) => (
-                        <GigCard key={gig.id} gig={gig} />
+                        <GigCard
+                            key={gig.id}
+                            gig={gig}
+                            currentUserId={currentUserId}
+                        />
                     ))
                 )}
             </div>

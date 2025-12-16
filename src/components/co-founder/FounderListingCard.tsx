@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, TrendingUp, DollarSign } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ApplyFounderDialog } from "./ApplyFounderDialog";
+import { ViewFounderApplicationsDialog } from "./ViewFounderApplicationsDialog";
 
 export interface FounderListing {
     id: string;
@@ -23,9 +24,10 @@ export interface FounderListing {
 
 interface FounderListingCardProps {
     listing: FounderListing;
+    currentUserId: string | null;
 }
 
-export const FounderListingCard = ({ listing }: FounderListingCardProps) => {
+export const FounderListingCard = ({ listing, currentUserId }: FounderListingCardProps) => {
     return (
         <Card className="hover:shadow-lg transition-shadow border-2 border-transparent hover:border-primary/10">
             <CardHeader className="pb-3">
@@ -67,10 +69,17 @@ export const FounderListingCard = ({ listing }: FounderListingCardProps) => {
             </CardContent>
 
             <CardFooter className="pt-2">
-                <ApplyFounderDialog
-                    listingId={listing.id}
-                    listingRole={listing.role_needed}
-                />
+                {currentUserId === listing.user_id ? (
+                    <ViewFounderApplicationsDialog
+                        listingId={listing.id}
+                        listingRole={listing.role_needed}
+                    />
+                ) : (
+                    <ApplyFounderDialog
+                        listingId={listing.id}
+                        listingRole={listing.role_needed}
+                    />
+                )}
             </CardFooter>
         </Card>
     );
