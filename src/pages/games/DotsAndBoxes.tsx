@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, RotateCcw, Trophy, User, Cpu, Users } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { ArrowLeft, RotateCcw, Trophy, User, Cpu, Users, Globe, Copy } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameSounds } from "@/hooks/useGameSounds";
 import { HowToPlay } from "@/components/games/HowToPlay";
+import { useMultiplayerGame } from "@/hooks/useMultiplayerGame";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const GRID_SIZE = 4; // 4x4 dots = 3x3 boxes
 
@@ -17,8 +20,11 @@ interface Line {
     vertical: boolean;
 }
 
+type GameMode = "PVP" | "AI" | "ONLINE";
+
 const DotsAndBoxes = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const playSound = useGameSounds();
     const [hLines, setHLines] = useState<number[][]>(
         Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE - 1).fill(0))
@@ -32,8 +38,52 @@ const DotsAndBoxes = () => {
     const [currentPlayer, setCurrentPlayer] = useState<1 | 2>(1);
     const [scores, setScores] = useState({ 1: 0, 2: 0 });
     const [winner, setWinner] = useState<number | null>(null);
-    const [gameMode, setGameMode] = useState<"PVP" | "AI">("AI");
+    const [gameMode, setGameMode] = useState<GameMode>("AI");
     const [isAiTurn, setIsAiTurn] = useState(false);
+
+    // Online State
+    const [roomId, setRoomId] = useState("");
+    const [showRoomDialog, setShowRoomDialog] = useState(false);
+    const [isHost, setIsHost] = useState(false);
+
+    // Join room from URL
+    useEffect(() => {
+        const room = searchParams.get("room");
+        if (room) {
+            setRoomId(room);
+            setGameMode("ONLINE");
+            setIsHost(false);
+        }
+    }, [searchParams]);
+
+    const { isConnected, playerCount, sendMove, myPlayerId } = useMultiplayerGame({
+        gameId: 'dotsandboxes',
+        roomId: roomId,
+        initialState: { hLines, vLines, boxes, currentPlayer, scores, winner },
+        onStateUpdate: (newState) => {
+            if (gameMode === 'ONLINE') {
+                setHLines(newState.hLines);
+                setVLines(newState.vLines);
+                setBoxes(newState.boxes);
+                setCurrentPlayer(newState.currentPlayer);
+                setScores(newState.scores);
+                if (newState.winner !== undefined) setWinner(newState.winner);
+            }
+        }
+    });
+
+    const myPlayerNum = isHost ? 1 : 2;
+    const isMyTurn = gameMode === 'ONLINE' ? (currentPlayer === myPlayerNum) : true;
+
+    const createRoom = () => {
+        const newRoomId = Math.random().toString(36).substring(7);
+        setRoomId(newRoomId);
+        setIsHost(true);
+        setGameMode("ONLINE");
+        setShowRoomDialog(true);
+        setScores({ 1: 0, 2: 0 });
+        resetGame(true);
+    };
 
     // Initial Load Stats
     useEffect(() => {
@@ -46,7 +96,20 @@ const DotsAndBoxes = () => {
         localStorage.setItem("dots_scores", JSON.stringify(scores));
     }, [scores]);
 
-    const resetGame = () => {
+    const resetGame = (force = false) => {
+        if (gameMode === 'ONLINE' && !force && !isHost) {
+            toast("Host has reset the game");
+            // Send reset state
+            sendMove({
+                hLines: Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE - 1).fill(0)),
+                vLines: Array(GRID_SIZE - 1).fill(null).map(() => Array(GRID_SIZE).fill(0)),
+                boxes: Array(GRID_SIZE - 1).fill(null).map(() => Array(GRID_SIZE - 1).fill(0)),
+                currentPlayer: 1,
+                scores: { 1: 0, 2: 0 },
+                winner: null
+            });
+        }
+
         playSound('click');
         setHLines(Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE - 1).fill(0)));
         setVLines(Array(GRID_SIZE - 1).fill(null).map(() => Array(GRID_SIZE).fill(0)));
@@ -88,19 +151,9 @@ const DotsAndBoxes = () => {
 
         if (captured) {
             playSound('pop');
-            setBoxes(newBoxes);
-            const p1Score = newBoxes.flat().filter(b => b === 1).length;
-            const p2Score = newBoxes.flat().filter(b => b === 2).length;
-            setScores({ 1: p1Score, 2: p2Score });
-
-            if (p1Score + p2Score === (GRID_SIZE - 1) * (GRID_SIZE - 1)) {
-                if (p1Score > p2Score) setWinner(1);
-                else if (p2Score > p1Score) setWinner(2);
-                else setWinner(0);
-            }
-            return true;
+            return { captured: true, newBoxes };
         }
-        return false;
+        return { captured: false, newBoxes };
     };
 
     // AI Logic
@@ -115,12 +168,7 @@ const DotsAndBoxes = () => {
     }, [currentPlayer, gameMode, winner]);
 
     const makeAiMove = () => {
-        // AI Strategy:
-        // 1. Take any box that completes a square (Greedy).
-        // 2. Avoid giving a box if possible.
-        // 3. Random move.
-
-        // Find all available moves
+        // AI Strategy... same as before plus slight fix to use executeMove
         const moves: { r: number, c: number, v: boolean }[] = [];
         for (let r = 0; r < GRID_SIZE; r++) {
             for (let c = 0; c < GRID_SIZE - 1; c++) {
@@ -138,14 +186,13 @@ const DotsAndBoxes = () => {
         // 1. Check for scoring moves
         for (const move of moves) {
             if (isCompletingMove(move)) {
-                executeMove(move.r, move.c, move.v);
+                executeMove(move.r, move.c, move.v, true);
                 setIsAiTurn(false);
                 return;
             }
         }
 
-        // 2. Filter out moves that give away a box (dumb implementation for now: just random safe if exists)
-        // A "safe" move is one that doesn't put the 3rd side on any box.
+        // 2. Filter out moves that give away a box
         const safeMoves = moves.filter(m => !givesAwayBox(m));
 
         let selectedMove;
@@ -156,14 +203,13 @@ const DotsAndBoxes = () => {
         }
 
         if (selectedMove) {
-            executeMove(selectedMove.r, selectedMove.c, selectedMove.v);
+            executeMove(selectedMove.r, selectedMove.c, selectedMove.v, true);
         }
         setIsAiTurn(false);
     };
 
     const isCompletingMove = (move: { r: number, c: number, v: boolean }) => {
-        // Temporarily set the line and check if checkBoxes would capture
-        // We'll mimic check logic without side effects
+        // ... (Keep existing logic)
         const sides = (r: number, c: number) => {
             let count = 0;
             if (hLines[r][c] !== 0 || (move.v === false && move.r === r && move.c === c)) count++;
@@ -173,10 +219,10 @@ const DotsAndBoxes = () => {
             return count;
         };
 
-        if (move.v) { // Vertical line at r,c separates box(r, c-1) and box(r,c)
+        if (move.v) {
             if (move.c > 0 && sides(move.r, move.c - 1) === 4) return true;
             if (move.c < GRID_SIZE - 1 && sides(move.r, move.c) === 4) return true;
-        } else { // Horizontal line at r,c separates box(r-1, c) and box(r,c)
+        } else {
             if (move.r > 0 && sides(move.r - 1, move.c) === 4) return true;
             if (move.r < GRID_SIZE - 1 && sides(move.r, move.c) === 4) return true;
         }
@@ -184,7 +230,6 @@ const DotsAndBoxes = () => {
     };
 
     const givesAwayBox = (move: { r: number, c: number, v: boolean }) => {
-        // Check if placing this line makes any adjacent box have 3 lines (so the opponent can take it)
         const sides = (r: number, c: number) => {
             let count = 0;
             if (hLines[r][c] !== 0 || (move.v === false && move.r === r && move.c === c)) count++;
@@ -204,25 +249,56 @@ const DotsAndBoxes = () => {
         return false;
     };
 
-    const executeMove = (r: number, c: number, vertical: boolean) => {
-        let newHLines = hLines;
-        let newVLines = vLines;
+    const executeMove = (r: number, c: number, vertical: boolean, isAi = false) => {
+        let newHLines = [...hLines.map(row => [...row])];
+        let newVLines = [...vLines.map(row => [...row])];
 
         if (vertical) {
-            newVLines = [...vLines.map(row => [...row])];
             newVLines[r][c] = currentPlayer;
             setVLines(newVLines);
         } else {
-            newHLines = [...hLines.map(row => [...row])];
             newHLines[r][c] = currentPlayer;
             setHLines(newHLines);
         }
 
-        const captured = checkBoxes(newHLines, newVLines, { r, c, vertical });
-        if (!captured) {
-            setCurrentPlayer(currentPlayer === 1 ? 2 : 1);
+        const { captured, newBoxes } = checkBoxes(newHLines, newVLines, { r, c, vertical });
+
+        let nextPlayer = currentPlayer;
+        let finalBoxes = boxes;
+
+        let newScores = { ...scores };
+        let newWinner = winner;
+
+        if (captured) {
+            setBoxes(newBoxes);
+            finalBoxes = newBoxes;
+            const p1Score = newBoxes.flat().filter(b => b === 1).length;
+            const p2Score = newBoxes.flat().filter(b => b === 2).length;
+            newScores = { 1: p1Score, 2: p2Score };
+            setScores(newScores);
+
+            if (p1Score + p2Score === (GRID_SIZE - 1) * (GRID_SIZE - 1)) {
+                if (p1Score > p2Score) newWinner = 1;
+                else if (p2Score > p1Score) newWinner = 2;
+                else newWinner = 0;
+                setWinner(newWinner);
+            }
+            // Player continues turn if captured
+        } else {
+            nextPlayer = currentPlayer === 1 ? 2 : 1;
+            setCurrentPlayer(nextPlayer);
         }
-        // If captured, efficient AI will automatically go again in next useEffect loop since currentPlayer doesn't change
+
+        if (gameMode === 'ONLINE') {
+            sendMove({
+                hLines: newHLines,
+                vLines: newVLines,
+                boxes: finalBoxes,
+                currentPlayer: nextPlayer,
+                scores: newScores,
+                winner: newWinner
+            });
+        }
     };
 
     const handleLineClick = (r: number, c: number, vertical: boolean) => {
@@ -230,6 +306,11 @@ const DotsAndBoxes = () => {
         if (isAiTurn) return;
         if (vertical && vLines[r][c] !== 0) return;
         if (!vertical && hLines[r][c] !== 0) return;
+
+        if (gameMode === 'ONLINE' && !isMyTurn) {
+            toast.error("Not your turn!");
+            return;
+        }
 
         playSound('click');
         executeMove(r, c, vertical);
@@ -253,7 +334,7 @@ const DotsAndBoxes = () => {
                 }
             }
         }
-    }, [winner]);
+    }, [winner, gameMode, playSound]);
 
     const toggleGameMode = () => {
         playSound('click');
@@ -264,37 +345,60 @@ const DotsAndBoxes = () => {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col items-center py-6 px-4">
             {/* Header */}
-            <div className="w-full max-w-2xl mb-6 flex items-center justify-between">
-                <div className="flex items-center gap-2">
+            <div className="w-full max-w-2xl mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-2 self-start md:self-auto">
                     <Button variant="ghost" size="icon" onClick={() => navigate("/games")} className="hover:bg-slate-200 dark:hover:bg-slate-800">
                         <ArrowLeft className="w-6 h-6" />
                     </Button>
                     <HowToPlay
                         title="Dots & Boxes"
-                        description="Connect adjacent dots with lines. Close a box to score a point and take another an extra turn."
+                        description="Connect dots to close boxes and score points."
                         rules={[
-                            "Players take turns joining two horizontally or vertically adjacent dots by a line.",
-                            "A player that completes the fourth side of a square (a box) colors that box and plays again.",
-                            "When all boxes have been colored, the game ends. The player who has colored more boxes wins."
+                            "Players take turns joining dots with lines.",
+                            "Complete a square to score and get an extra turn.",
                         ]}
                     />
+                    {gameMode === 'ONLINE' && (
+                        <div className="flex items-center gap-2 px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 rounded-full text-xs font-bold">
+                            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                            {isConnected ? `${playerCount} Connected` : 'Connecting...'}
+                        </div>
+                    )}
                 </div>
 
-                <h1 className="hidden md:block text-3xl font-black bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Dots & Boxes</h1>
-
                 <div className="flex gap-2">
-                    <Button
-                        variant={gameMode === "AI" ? "default" : "outline"}
-                        size="sm"
-                        onClick={toggleGameMode}
-                        className="gap-2"
-                    >
-                        {gameMode === "AI" ? <Cpu className="w-4 h-4" /> : <Users className="w-4 h-4" />}
-                        {gameMode === "AI" ? "vs AI" : "PVP"}
-                    </Button>
-                    <Button variant="outline" size="icon" onClick={resetGame} className="rounded-full hover:rotate-180 transition-transform duration-500">
-                        <RotateCcw className="w-5 h-5" />
-                    </Button>
+                    {gameMode === 'ONLINE' ? (
+                        <Button variant="destructive" size="sm" onClick={() => { setGameMode('AI'); setRoomId(""); }}>
+                            Leave Room
+                        </Button>
+                    ) : (
+                        <>
+                            <Button
+                                variant={gameMode === "AI" ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setGameMode("AI")}
+                                className="gap-2"
+                            >
+                                <Cpu className="w-4 h-4" /> AI
+                            </Button>
+                            <Button
+                                variant={gameMode === "PVP" ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setGameMode("PVP")}
+                                className="gap-2"
+                            >
+                                <Users className="w-4 h-4" /> Local
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={createRoom}
+                                className="gap-2 border-emerald-500 text-emerald-500 hover:bg-emerald-50"
+                            >
+                                <Globe className="w-4 h-4" /> Online
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -304,7 +408,9 @@ const DotsAndBoxes = () => {
                     <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-full mb-2">
                         <User className="w-6 h-6 text-blue-500" />
                     </div>
-                    <span className="font-bold text-slate-700 dark:text-slate-300">You</span>
+                    <span className="font-bold text-slate-700 dark:text-slate-300">
+                        {gameMode === 'ONLINE' ? (isHost ? 'You' : 'P1') : 'You'}
+                    </span>
                     <span className="text-3xl font-black text-blue-500">{scores[1]}</span>
                 </Card>
                 <div className="flex flex-col justify-center items-center">
@@ -314,7 +420,9 @@ const DotsAndBoxes = () => {
                     <div className="bg-pink-100 dark:bg-pink-900/30 p-2 rounded-full mb-2">
                         {gameMode === 'AI' ? <Cpu className="w-6 h-6 text-pink-500" /> : <User className="w-6 h-6 text-pink-500" />}
                     </div>
-                    <span className="font-bold text-slate-700 dark:text-slate-300">{gameMode === 'AI' ? 'AI' : 'P2'}</span>
+                    <span className="font-bold text-slate-700 dark:text-slate-300">
+                        {gameMode === 'ONLINE' ? (!isHost ? 'You' : 'P2') : (gameMode === 'AI' ? 'AI' : 'P2')}
+                    </span>
                     <span className="text-3xl font-black text-pink-500">{scores[2]}</span>
                 </Card>
             </div>
@@ -325,8 +433,10 @@ const DotsAndBoxes = () => {
                 animate={{ scale: 1, opacity: 1 }}
                 className="p-8 bg-white dark:bg-card rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] select-none touch-none border border-slate-100 dark:border-slate-800 relative"
             >
-                {/* AI Blocker */}
-                {isAiTurn && !winner && <div className="absolute inset-0 z-20 cursor-wait bg-transparent" />}
+                {/* AI Blocker or Online Wait */}
+                {(isAiTurn || (gameMode === 'ONLINE' && !isMyTurn)) && !winner && (
+                    <div className="absolute inset-0 z-20 cursor-wait bg-transparent" />
+                )}
 
                 <div className="flex flex-col">
                     {Array(GRID_SIZE).fill(0).map((_, r) => (
@@ -349,6 +459,10 @@ const DotsAndBoxes = () => {
                                                         animate={{ scaleX: 1 }}
                                                         className={`absolute inset-0 h-2 my-1 rounded-full ${hLines[r][c] === 1 ? "bg-blue-500" : "bg-pink-500"}`}
                                                     />
+                                                )}
+                                                {/* Hover hint logic only if my turn */}
+                                                {(gameMode !== 'ONLINE' || isMyTurn) && hLines[r][c] === 0 && !winner && (
+                                                    <div className="absolute inset-0 h-2 my-1 rounded-full bg-slate-300 dark:bg-slate-700 opacity-0 group-hover:opacity-50 transition-opacity" />
                                                 )}
                                             </div>
                                         )}
@@ -373,6 +487,10 @@ const DotsAndBoxes = () => {
                                                         animate={{ scaleY: 1 }}
                                                         className={`absolute inset-0 w-2 mx-1 rounded-full ${vLines[r][c] === 1 ? "bg-blue-500" : "bg-pink-500"}`}
                                                     />
+                                                )}
+                                                {/* Hover check */}
+                                                {(gameMode !== 'ONLINE' || isMyTurn) && vLines[r][c] === 0 && !winner && (
+                                                    <div className="absolute inset-0 w-2 mx-1 rounded-full bg-slate-300 dark:bg-slate-700 opacity-0 group-hover:opacity-50 transition-opacity" />
                                                 )}
                                             </div>
                                             {c < GRID_SIZE - 1 && (
@@ -421,13 +539,46 @@ const DotsAndBoxes = () => {
                             exit={{ y: -10, opacity: 0 }}
                             className="text-muted-foreground font-medium flex items-center gap-2"
                         >
-                            <span className={currentPlayer === 1 ? "text-blue-500 font-bold" : "text-pink-500 font-bold"}>
-                                {gameMode === 'AI' && currentPlayer === 2 ? "AI's" : (currentPlayer === 1 ? "Your" : "P2's")}
-                            </span> Turn
+                            {gameMode === 'ONLINE' ? (
+                                isMyTurn ? "Your Turn" : "Opponent's Turn"
+                            ) : (
+                                <>
+                                    <span className={currentPlayer === 1 ? "text-blue-500 font-bold" : "text-pink-500 font-bold"}>
+                                        {gameMode === 'AI' && currentPlayer === 2 ? "AI's" : (currentPlayer === 1 ? "Your" : "P2's")}
+                                    </span> Turn
+                                </>
+                            )}
                         </motion.div>
                     )}
                 </AnimatePresence>
             </div>
+
+            {/* Room Invite Dialog */}
+            <Dialog open={showRoomDialog} onOpenChange={setShowRoomDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Invite a Friend</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                        <p className="text-sm text-muted-foreground">Share this Code or Link with your friend to play.</p>
+                        <div className="flex gap-2">
+                            <Input readOnly value={roomId} className="font-mono text-center font-bold tracking-widest text-lg" />
+                            <Button onClick={() => {
+                                navigator.clipboard.writeText(roomId);
+                                toast.success("Code copied!");
+                            }}>Copy</Button>
+                        </div>
+                        <div className="text-center text-xs text-muted-foreground">OR</div>
+                        <Button variant="outline" className="w-full" onClick={() => {
+                            const url = `${window.location.origin}/games/dots-and-boxes?room=${roomId}`;
+                            navigator.clipboard.writeText(url);
+                            toast.success("Link copied!");
+                        }}>
+                            <Copy className="w-4 h-4 mr-2" /> Copy Invite Link
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

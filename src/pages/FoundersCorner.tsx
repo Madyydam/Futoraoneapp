@@ -32,7 +32,11 @@ const FoundersCorner = () => {
         `)
                 .order('created_at', { ascending: false });
 
-            if (error) throw error;
+            if (error) {
+                // Silently fallback to mock data if table doesn't exist
+                setListings(MOCK_FOUNDER_LISTINGS);
+                return;
+            }
 
             // Integrate Mock Data if DB is empty
             if (!data || data.length === 0) {
@@ -41,8 +45,7 @@ const FoundersCorner = () => {
                 setListings(data);
             }
         } catch (error) {
-            console.error("Error fetching listings:", error);
-            // Fallback to mock data on error/empty
+            // Silently fallback to mock data on any error
             setListings(MOCK_FOUNDER_LISTINGS);
         } finally {
             setLoading(false);

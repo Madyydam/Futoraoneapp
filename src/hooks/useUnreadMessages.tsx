@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const useUnreadMessages = (userId: string | undefined) => {
   const [unreadCount, setUnreadCount] = useState(0);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -14,7 +15,10 @@ export const useUnreadMessages = (userId: string | undefined) => {
         .select("conversation_id, last_read_at")
         .eq("user_id", userId);
 
-      if (!participations) return;
+      if (!participations || participations.length === 0) {
+        setUnreadCount(0);
+        return;
+      }
 
       // Count unread messages for each conversation in parallel
       const unreadCounts = await Promise.all(
@@ -36,6 +40,14 @@ export const useUnreadMessages = (userId: string | undefined) => {
 
     fetchUnreadCount();
 
+    // Debounced update function
+    const debouncedFetch = () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
+        fetchUnreadCount();
+      }, 2000); // Wait 2 seconds before refreshing
+    };
+
     // Subscribe to new messages
     const channel = supabase
       .channel('unread-messages')
@@ -47,7 +59,7 @@ export const useUnreadMessages = (userId: string | undefined) => {
           table: 'messages'
         },
         () => {
-          fetchUnreadCount();
+          debouncedFetch();
         }
       )
       .on(
@@ -59,15 +71,17 @@ export const useUnreadMessages = (userId: string | undefined) => {
           filter: `user_id=eq.${userId}`
         },
         () => {
-          fetchUnreadCount();
+          debouncedFetch();
         }
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, [userId]);
 
   return unreadCount;
 };
+

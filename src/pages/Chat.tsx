@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Send } from "lucide-react";
+import { ArrowLeft, Send, Heart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@supabase/supabase-js";
 import { formatDistanceToNow } from "date-fns";
@@ -28,16 +28,16 @@ interface OtherUser {
 }
 
 // Memoized message component to prevent unnecessary re-renders
-const MessageBubble = memo(({ message, isOwn }: { message: Message, isOwn: boolean }) => (
+const MessageBubble = memo(({ message, isOwn, isTechMatch }: { message: Message, isOwn: boolean, isTechMatch: boolean }) => (
   <div className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
     <div
       className={`max-w-[70%] sm:max-w-[60%] rounded-2xl px-4 py-2 ${isOwn
         ? "bg-primary text-primary-foreground"
-        : "bg-muted text-foreground"
+        : (isTechMatch ? "bg-pink-100 dark:bg-pink-900/30 text-pink-900 dark:text-pink-100" : "bg-muted text-foreground")
         }`}
     >
       <p className="text-sm sm:text-base break-words">{message.content}</p>
-      <div className="flex items-center justify-end gap-1 mt-1">
+      <div className={`flex items-center justify-end gap-1 mt-1 ${isTechMatch && !isOwn ? "text-pink-700/70 dark:text-pink-300/70" : ""}`}>
         <p className="text-xs opacity-70">
           {formatDistanceToNow(new Date(message.created_at), {
             addSuffix: true
@@ -63,6 +63,7 @@ const Chat = () => {
   const [otherUser, setOtherUser] = useState<OtherUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [isTechMatch, setIsTechMatch] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -107,7 +108,18 @@ const Chat = () => {
       .single();
 
     if (participants?.profiles) {
-      setOtherUser(participants.profiles as any);
+      const profile = participants.profiles as any;
+      setOtherUser(profile);
+
+      // Check for Tech Match
+      const { data: match } = await supabase
+        .from('tech_matches')
+        .select('status')
+        .eq('status', 'matched')
+        .or(`and(liker_id.eq.${user.id},liked_id.eq.${profile.id}),and(liker_id.eq.${profile.id},liked_id.eq.${user.id})`)
+        .maybeSingle();
+
+      if (match) setIsTechMatch(true);
     }
 
     // Get messages
@@ -223,7 +235,7 @@ const Chat = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-card border-b border-border p-3 sm:p-4">
+      <div className={`sticky top-0 z-10 bg-card border-b border-border p-3 sm:p-4 ${isTechMatch ? 'bg-pink-50/50 dark:bg-pink-900/10' : ''}`}>
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -234,20 +246,32 @@ const Chat = () => {
           </Button>
           {otherUser && (
             <>
-              <Avatar
-                className="h-10 w-10 cursor-pointer"
-                onClick={() => navigate(`/user/${otherUser.id}`)}
-              >
-                <AvatarImage src={otherUser.avatar_url || undefined} />
-                <AvatarFallback className="bg-primary text-primary-foreground">
-                  {otherUser.username[0]?.toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar
+                  className="h-10 w-10 cursor-pointer"
+                  onClick={() => navigate(`/user/${otherUser.id}`)}
+                >
+                  <AvatarImage src={otherUser.avatar_url || undefined} />
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    {otherUser.username[0]?.toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                {isTechMatch && (
+                  <div className="absolute -bottom-1 -right-1 bg-pink-500 rounded-full p-0.5 border border-white dark:border-slate-900">
+                    <Heart className="w-2 h-2 fill-white text-white" />
+                  </div>
+                )}
+              </div>
               <div
                 className="flex-1 cursor-pointer"
                 onClick={() => navigate(`/user/${otherUser.id}`)}
               >
-                <p className="font-semibold text-foreground">{otherUser.full_name}</p>
+                <div className="flex items-center gap-2">
+                  <p className={`font-semibold ${isTechMatch ? 'text-pink-600 dark:text-pink-400' : 'text-foreground'}`}>
+                    {otherUser.full_name}
+                  </p>
+                  {isTechMatch && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-pink-100 text-pink-600 border border-pink-200 uppercase tracking-wider">Match</span>}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {isTyping ? (
                     <span className="text-primary font-medium animate-pulse">Typing...</span>
@@ -268,6 +292,7 @@ const Chat = () => {
             key={message.id}
             message={message}
             isOwn={message.sender_id === user?.id}
+            isTechMatch={isTechMatch}
           />
         ))}
         {isTyping && (

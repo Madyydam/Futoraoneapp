@@ -1,20 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, RotateCcw, Trophy, Circle, X, Cpu, Users } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { ArrowLeft, RotateCcw, Trophy, Circle, X, Cpu, Users, Globe, Copy } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameSounds } from "@/hooks/useGameSounds";
 import { HowToPlay } from "@/components/games/HowToPlay";
+import { useMultiplayerGame } from "@/hooks/useMultiplayerGame";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type Player = "X" | "O" | null;
-type GameMode = "PVP" | "AI";
+type GameMode = "PVP" | "AI" | "ONLINE";
 type Difficulty = "EASY" | "HARD";
 
 const TicTacToe = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const playSound = useGameSounds();
     const [board, setBoard] = useState<Player[]>(Array(9).fill(null));
     const [xIsNext, setXIsNext] = useState(true);
@@ -23,6 +27,50 @@ const TicTacToe = () => {
     const [gameMode, setGameMode] = useState<GameMode>("AI");
     const [difficulty, setDifficulty] = useState<Difficulty>("HARD");
     const [isAiTurn, setIsAiTurn] = useState(false);
+
+    // Online State
+    const [roomId, setRoomId] = useState("");
+    const [showRoomDialog, setShowRoomDialog] = useState(false);
+    const [isHost, setIsHost] = useState(false);
+
+    // Join room from URL
+    useEffect(() => {
+        const room = searchParams.get("room");
+        if (room) {
+            setRoomId(room);
+            setGameMode("ONLINE");
+            setIsHost(false); // If joining via link, not host usually (unless created self)
+        }
+    }, [searchParams]);
+
+    const { isConnected, playerCount, sendMove, myPlayerId } = useMultiplayerGame({
+        gameId: 'tictactoe',
+        roomId: roomId,
+        initialState: { board, xIsNext },
+        onStateUpdate: (newState) => {
+            if (gameMode === 'ONLINE') {
+                setBoard(newState.board);
+                setXIsNext(newState.xIsNext);
+                // Sync winner/scores if needed or recalculate? 
+                // Better to recalculate locally or sync strict state.
+                // For simplicity, we recalculate derived state (winner) from board effects
+            }
+        }
+    });
+
+    const isMyTurn = gameMode === 'ONLINE'
+        ? (isHost && xIsNext) || (!isHost && !xIsNext) // Host is X, Joiner is O
+        : true; // Local game always my turn (except AI)
+
+    const createRoom = () => {
+        const newRoomId = Math.random().toString(36).substring(7);
+        setRoomId(newRoomId);
+        setIsHost(true);
+        setGameMode("ONLINE");
+        setShowRoomDialog(true);
+        setScores({ X: 0, O: 0 });
+        resetGame(true);
+    };
 
     // Initial Load Stats
     useEffect(() => {
@@ -51,13 +99,38 @@ const TicTacToe = () => {
         return null;
     };
 
+    // Derived effect for winner
+    useEffect(() => {
+        const calculatedWinner = checkWinner(board);
+        if (calculatedWinner && !winner) {
+            setWinner(calculatedWinner);
+            if (calculatedWinner !== "Draw") {
+                playSound('win');
+                if (gameMode !== 'ONLINE') {
+                    setScores(prev => ({ ...prev, [calculatedWinner]: prev[calculatedWinner as keyof typeof prev] + 1 }));
+                }
+                if ((calculatedWinner === 'X' && isHost) || (calculatedWinner === 'O' && !isHost) || gameMode !== 'AI') {
+                    confetti({
+                        particleCount: 150,
+                        spread: 70,
+                        origin: { y: 0.6 },
+                        colors: calculatedWinner === "X" ? ['#3b82f6', '#2563eb'] : ['#ec4899', '#db2777']
+                    });
+                }
+            } else {
+                playSound('draw');
+            }
+        }
+    }, [board, gameMode, isHost, playSound, winner]);
+
+
     // AI MOVE LOGIC
     useEffect(() => {
         if (gameMode === "AI" && !xIsNext && !winner) {
             setIsAiTurn(true);
             const timer = setTimeout(() => {
                 makeAiMove();
-            }, 600); // Simulate thinking time
+            }, 600);
             return () => clearTimeout(timer);
         }
     }, [xIsNext, gameMode, winner]);
@@ -66,17 +139,14 @@ const TicTacToe = () => {
         if (winner) return;
         let moveIndex: number = -1;
 
-        // Check if game is over before moving
         if (checkWinner(board)) return;
 
         if (difficulty === "EASY") {
-            // Random available move
             const available = board.map((val, idx) => val === null ? idx : null).filter(val => val !== null) as number[];
             if (available.length > 0) {
                 moveIndex = available[Math.floor(Math.random() * available.length)];
             }
         } else {
-            // Minimax
             moveIndex = getBestMove(board);
         }
 
@@ -89,11 +159,9 @@ const TicTacToe = () => {
     const getBestMove = (currentBoard: Player[]): number => {
         let bestScore = -Infinity;
         let move = -1;
-
-        // If it's the very first move of the game (AI starts O), pick center or random corner to save computation
         const emptySpots = currentBoard.filter(s => s === null).length;
-        if (emptySpots === 9) return 4; // Center
-        if (emptySpots === 8 && currentBoard[4] === null) return 4; // Take center if player didn't
+        if (emptySpots === 9) return 4;
+        if (emptySpots === 8 && currentBoard[4] === null) return 4;
 
         for (let i = 0; i < 9; i++) {
             if (currentBoard[i] === null) {
@@ -109,17 +177,10 @@ const TicTacToe = () => {
         return move;
     };
 
-    const scoresMap = {
-        O: 10,
-        X: -10,
-        Draw: 0
-    };
-
+    const scoresMap = { O: 10, X: -10, Draw: 0 };
     const minimax = (currentBoard: Player[], depth: number, isMaximizing: boolean): number => {
         const result = checkWinner(currentBoard);
-        if (result !== null) {
-            return scoresMap[result as keyof typeof scoresMap];
-        }
+        if (result !== null) return scoresMap[result as keyof typeof scoresMap];
 
         if (isMaximizing) {
             let bestScore = -Infinity;
@@ -150,36 +211,33 @@ const TicTacToe = () => {
         if (winner || board[i]) return;
         if (!isAi && isAiTurn) return;
 
+        // Online Check
+        if (gameMode === 'ONLINE' && !isMyTurn) {
+            toast.error("Not your turn!");
+            return;
+        }
+
         playSound('pop');
         const newBoard = [...board];
-        newBoard[i] = xIsNext ? "X" : "O";
+        const nextPlayer = xIsNext ? "X" : "O";
+        newBoard[i] = nextPlayer;
+
         setBoard(newBoard);
         setXIsNext(!xIsNext);
 
-        const calculatedWinner = checkWinner(newBoard);
-        if (calculatedWinner) {
-            setWinner(calculatedWinner);
-            if (calculatedWinner !== "Draw") {
-                setScores(prev => ({ ...prev, [calculatedWinner]: prev[calculatedWinner as keyof typeof prev] + 1 }));
-                toast.success(`${calculatedWinner === 'O' && gameMode === 'AI' ? 'AI' : 'Player ' + calculatedWinner} Wins!`, { icon: "🏆" });
-                playSound('win');
-                // Only throw confetti if user wins or it's PVP
-                if (!(gameMode === 'AI' && calculatedWinner === 'O')) {
-                    confetti({
-                        particleCount: 150,
-                        spread: 70,
-                        origin: { y: 0.6 },
-                        colors: calculatedWinner === "X" ? ['#3b82f6', '#2563eb'] : ['#ec4899', '#db2777']
-                    });
-                }
-            } else {
-                toast.info("It's a draw!", { icon: "🤝" });
-                playSound('draw');
-            }
+        if (gameMode === 'ONLINE') {
+            sendMove({ board: newBoard, xIsNext: !xIsNext });
         }
     };
 
-    const resetGame = () => {
+    const resetGame = (force = false) => {
+        if (gameMode === 'ONLINE' && !force && !isHost) {
+            // Only host resets? Or vote? For now allow both but sync.
+            toast("Host has reset the game");
+            // Actually need to send reset signal
+            sendMove({ board: Array(9).fill(null), xIsNext: true });
+        }
+
         playSound('click');
         setBoard(Array(9).fill(null));
         setWinner(null);
@@ -187,47 +245,63 @@ const TicTacToe = () => {
         setIsAiTurn(false);
     };
 
-    const toggleGameMode = () => {
-        playSound('click');
-        setGameMode(prev => prev === "AI" ? "PVP" : "AI");
-        resetGame();
-        setScores({ X: 0, O: 0 }); // Reset scores on mode switch
-    };
-
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col items-center py-6 px-4">
             {/* Header */}
-            <div className="w-full max-w-2xl mb-8 flex items-center justify-between">
-                <div className="flex items-center gap-2">
+            <div className="w-full max-w-2xl mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-2 self-start md:self-auto">
                     <Button variant="ghost" size="icon" onClick={() => navigate("/games")} className="hover:bg-slate-200 dark:hover:bg-slate-800">
                         <ArrowLeft className="w-6 h-6" />
                     </Button>
                     <HowToPlay
                         title="Tic Tac Toe"
-                        description="Get three of your marks in a row (up, down, across, or diagonally) to win."
+                        description="Three marks in a row wins!"
                         rules={[
                             "Players take turns putting their marks in empty squares.",
-                            "The first player to get 3 of her marks in a row (up, down, across, or diagonally) is the winner.",
-                            "When all 9 squares are full, the game is over. If no player has 3 marks in a row, the game ends in a tie."
+                            "Get 3 marks in a row to win.",
                         ]}
                     />
+                    {gameMode === 'ONLINE' && (
+                        <div className="flex items-center gap-2 px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 rounded-full text-xs font-bold">
+                            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                            {isConnected ? `${playerCount} Connected` : 'Connecting...'}
+                        </div>
+                    )}
                 </div>
 
-                <h1 className="hidden md:block text-3xl font-black bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">Tic Tac Toe</h1>
-
                 <div className="flex gap-2">
-                    <Button
-                        variant={gameMode === "AI" ? "default" : "outline"}
-                        size="sm"
-                        onClick={toggleGameMode}
-                        className="gap-2"
-                    >
-                        {gameMode === "AI" ? <Cpu className="w-4 h-4" /> : <Users className="w-4 h-4" />}
-                        {gameMode === "AI" ? "vs AI" : "PVP"}
-                    </Button>
-                    <Button variant="outline" size="icon" onClick={resetGame} className="rounded-full hover:rotate-180 transition-transform duration-500">
-                        <RotateCcw className="w-5 h-5" />
-                    </Button>
+                    {gameMode === 'ONLINE' ? (
+                        <Button variant="destructive" size="sm" onClick={() => { setGameMode('AI'); setRoomId(""); }}>
+                            Leave Room
+                        </Button>
+                    ) : (
+                        <>
+                            <Button
+                                variant={gameMode === "AI" ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setGameMode("AI")}
+                                className="gap-2"
+                            >
+                                <Cpu className="w-4 h-4" /> AI
+                            </Button>
+                            <Button
+                                variant={gameMode === "PVP" ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setGameMode("PVP")}
+                                className="gap-2"
+                            >
+                                <Users className="w-4 h-4" /> Local
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={createRoom}
+                                className="gap-2 border-emerald-500 text-emerald-500 hover:bg-emerald-50"
+                            >
+                                <Globe className="w-4 h-4" /> Online
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -235,7 +309,9 @@ const TicTacToe = () => {
             <div className="flex gap-4 md:gap-12 mb-12">
                 <Card className={`p-4 md:px-8 flex flex-col items-center min-w-[120px] border-2 transition-all duration-300 ${xIsNext && !winner ? "border-blue-500 shadow-lg scale-105 ring-2 ring-blue-200" : "border-transparent"}`}>
                     <X className="w-8 h-8 text-blue-500 mb-2" />
-                    <span className="font-bold text-slate-700 dark:text-slate-300">You</span>
+                    <span className="font-bold text-slate-700 dark:text-slate-300">
+                        {gameMode === 'ONLINE' ? (isHost ? 'You' : 'P1') : 'You'}
+                    </span>
                     <span className="text-3xl font-black text-blue-500">{scores.X}</span>
                 </Card>
                 <div className="flex flex-col justify-center items-center">
@@ -243,7 +319,9 @@ const TicTacToe = () => {
                 </div>
                 <Card className={`p-4 md:px-8 flex flex-col items-center min-w-[120px] border-2 transition-all duration-300 ${!xIsNext && !winner ? "border-pink-500 shadow-lg scale-105 ring-2 ring-pink-200" : "border-transparent"}`}>
                     <Circle className="w-8 h-8 text-pink-500 mb-2" />
-                    <span className="font-bold text-slate-700 dark:text-slate-300">{gameMode === 'AI' ? 'AI' : 'P2'}</span>
+                    <span className="font-bold text-slate-700 dark:text-slate-300">
+                        {gameMode === 'ONLINE' ? (!isHost ? 'You' : 'P2') : (gameMode === 'AI' ? 'AI' : 'P2')}
+                    </span>
                     <span className="text-3xl font-black text-pink-500">{scores.O}</span>
                 </Card>
             </div>
@@ -255,22 +333,22 @@ const TicTacToe = () => {
                 className="p-6 bg-white dark:bg-card rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-slate-100 dark:border-slate-800"
             >
                 <div className="grid grid-cols-3 gap-3 relative">
-                    {/* Interaction Blocker for AI Turn */}
-                    {isAiTurn && !winner && (
+                    {/* Interaction Blocker for AI Turn or Online Wait */}
+                    {(isAiTurn || (gameMode === 'ONLINE' && !isMyTurn)) && !winner && (
                         <div className="absolute inset-0 z-10 cursor-wait bg-transparent" />
                     )}
 
                     {board.map((square, i) => (
                         <motion.button
                             key={i}
-                            whileHover={!square && !winner && !isAiTurn ? { scale: 1.05 } : {}}
-                            whileTap={!square && !winner && !isAiTurn ? { scale: 0.95 } : {}}
+                            whileHover={!square && !winner && !isAiTurn && (gameMode !== 'ONLINE' || isMyTurn) ? { scale: 1.05 } : {}}
+                            whileTap={!square && !winner && !isAiTurn && (gameMode !== 'ONLINE' || isMyTurn) ? { scale: 0.95 } : {}}
                             className={`w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-2xl text-5xl font-bold flex items-center justify-center transition-colors duration-200 
                                 ${!square && !winner ? "hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer bg-slate-50 dark:bg-slate-900" : "cursor-default"}
                                 ${square === "X" ? "bg-blue-50 dark:bg-blue-900/20 text-blue-500" : square === "O" ? "bg-pink-50 dark:bg-pink-900/20 text-pink-500" : ""}
                             `}
-                            onClick={() => !isAiTurn && handleMove(i)}
-                            disabled={isAiTurn}
+                            onClick={() => handleMove(i)}
+                            disabled={!!square || !!winner || isAiTurn || (gameMode === 'ONLINE' && !isMyTurn)}
                         >
                             <AnimatePresence mode="wait">
                                 {square === "X" && (
@@ -297,7 +375,7 @@ const TicTacToe = () => {
                 </div>
             </motion.div>
 
-            {/* Turn Indicator / Winner Message */}
+            {/* Turn Indicator */}
             <div className="mt-12 h-16 flex flex-col items-center gap-2">
                 <AnimatePresence mode="wait">
                     {winner ? (
@@ -318,27 +396,48 @@ const TicTacToe = () => {
                             exit={{ y: -10, opacity: 0 }}
                             className="text-xl font-medium flex items-center gap-2 bg-white dark:bg-card px-6 py-2 rounded-full shadow-sm"
                         >
-                            It's <span className={xIsNext ? "text-blue-500 font-bold" : "text-pink-500 font-bold"}>
-                                {gameMode === 'AI' && !xIsNext ? "AI's" : (xIsNext ? "Your" : "P2's")}
-                            </span> Turn
+                            {gameMode === 'ONLINE' ? (
+                                isMyTurn ? "Your Turn" : "Opponent's Turn"
+                            ) : (
+                                <>It's <span className={xIsNext ? "text-blue-500 font-bold" : "text-pink-500 font-bold"}>
+                                    {gameMode === 'AI' && !xIsNext ? "AI's" : (xIsNext ? "X's" : "O's")}
+                                </span> Turn</>
+                            )}
                         </motion.div>
                     )}
                 </AnimatePresence>
 
-                {gameMode === 'AI' && !winner && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                            playSound('click');
-                            setDifficulty(d => d === "EASY" ? "HARD" : "EASY");
-                        }}
-                        className="text-xs text-muted-foreground"
-                    >
-                        Difficulty: <span className="font-bold ml-1">{difficulty}</span>
-                    </Button>
-                )}
+                <Button variant="ghost" className="mt-2" onClick={() => resetGame()}>
+                    <RotateCcw className="w-4 h-4 mr-2" /> Reset
+                </Button>
             </div>
+
+            {/* Room Invite Dialog */}
+            <Dialog open={showRoomDialog} onOpenChange={setShowRoomDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Invite a Friend</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                        <p className="text-sm text-muted-foreground">Share this Code or Link with your friend to play.</p>
+                        <div className="flex gap-2">
+                            <Input readOnly value={roomId} className="font-mono text-center font-bold tracking-widest text-lg" />
+                            <Button onClick={() => {
+                                navigator.clipboard.writeText(roomId);
+                                toast.success("Code copied!");
+                            }}>Copy</Button>
+                        </div>
+                        <div className="text-center text-xs text-muted-foreground">OR</div>
+                        <Button variant="outline" className="w-full" onClick={() => {
+                            const url = `${window.location.origin}/games/tic-tac-toe?room=${roomId}`;
+                            navigator.clipboard.writeText(url);
+                            toast.success("Link copied!");
+                        }}>
+                            <Copy className="w-4 h-4 mr-2" /> Copy Invite Link
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

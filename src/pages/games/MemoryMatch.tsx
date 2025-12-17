@@ -1,14 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, RotateCcw, Sparkles, Trophy } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import confetti from "canvas-confetti";
-import { motion, AnimatePresence } from "framer-motion";
-
-import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, RotateCcw, Sparkles, Trophy, Timer, Hash } from "lucide-react";
+import { ArrowLeft, RotateCcw, Sparkles, Trophy, Timer, Hash, Globe, Users, Copy } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
@@ -16,6 +8,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useGameSounds } from "@/hooks/useGameSounds";
 import { HowToPlay } from "@/components/games/HowToPlay";
 import { Card } from "@/components/ui/card";
+import { useMultiplayerGame } from "@/hooks/useMultiplayerGame";
+import { Input } from "@/components/ui/input";
 
 const CARDS = [
     { id: 1, icon: "🐶", matchId: 1 },
@@ -36,6 +30,8 @@ interface CardType {
     matched: boolean;
 }
 
+type GameMode = "SOLO" | "ONLINE";
+
 const MemoryMatch = () => {
     const navigate = useNavigate();
     const playSound = useGameSounds();
@@ -48,6 +44,44 @@ const MemoryMatch = () => {
     const [timer, setTimer] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
 
+    // Online PvP State
+    const [gameMode, setGameMode] = useState<GameMode>("SOLO");
+    const [roomId, setRoomId] = useState("");
+    const [isHost, setIsHost] = useState(false);
+    const [joinRoomId, setJoinRoomId] = useState("");
+    const [currentPlayer, setCurrentPlayer] = useState<1 | 2>(1);
+    const [scores, setScores] = useState({ 1: 0, 2: 0 });
+
+    const { isConnected, playerCount, sendMove } = useMultiplayerGame({
+        gameId: 'memory',
+        roomId,
+        initialState: {
+            cards: [],
+            currentPlayer: 1,
+            scores: { 1: 0, 2: 0 },
+            flippedIndices: []
+        },
+        onStateUpdate: (newState) => {
+            if (newState.reset) {
+                initializeGame(true); // reset silently
+                return;
+            }
+            if (newState.cards) setCards(newState.cards);
+            if (newState.currentPlayer) setCurrentPlayer(newState.currentPlayer);
+            if (newState.scores) setScores(newState.scores);
+            if (newState.isWon) setIsWon(newState.isWon);
+        },
+        onPlayerJoin: () => {
+            if (isHost) {
+                initializeGame(); // Restart with new player logic? Or just rely on current state broadcast
+                // Actually, if host is already waiting with a shuffled deck, we should just broadcast it.
+                // But for simplicity, let's re-shuffle for a fresh game.
+                toast.success("Player Joined! Starting Game...");
+                setTimeout(() => initializeGame(), 500);
+            }
+        }
+    });
+
     // Load Best Score
     useEffect(() => {
         const savedBest = localStorage.getItem("memory_best_score");
@@ -55,16 +89,16 @@ const MemoryMatch = () => {
         initializeGame();
     }, []);
 
-    // Timer Logic
+    // Timer Logic (Solo Only)
     useEffect(() => {
         let interval: NodeJS.Timeout;
-        if (isPlaying && !isWon) {
+        if (gameMode === 'SOLO' && isPlaying && !isWon) {
             interval = setInterval(() => {
                 setTimer(t => t + 1);
             }, 1000);
         }
         return () => clearInterval(interval);
-    }, [isPlaying, isWon]);
+    }, [isPlaying, isWon, gameMode]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -72,8 +106,12 @@ const MemoryMatch = () => {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const initializeGame = () => {
+    const initializeGame = (isRemoteReset = false) => {
         playSound('click');
+
+        // Only Host shuffles in Online Mode
+        if (gameMode === 'ONLINE' && !isHost && !isRemoteReset) return;
+
         const gameCards = [...CARDS, ...CARDS].map((card, index) => ({
             ...card,
             id: index,
@@ -82,6 +120,7 @@ const MemoryMatch = () => {
         }));
 
         gameCards.sort(() => Math.random() - 0.5);
+
         setCards(gameCards);
         setFlippedCards([]);
         setMoves(0);
@@ -89,10 +128,44 @@ const MemoryMatch = () => {
         setIsLock(false);
         setIsWon(false);
         setIsPlaying(true);
+        setCurrentPlayer(1);
+        setScores({ 1: 0, 2: 0 });
+
+        if (gameMode === 'ONLINE') {
+            sendMove({
+                cards: gameCards,
+                currentPlayer: 1,
+                scores: { 1: 0, 2: 0 },
+                isWon: false,
+                reset: isRemoteReset // Avoid infinite loops if we used a flag
+            });
+        }
+    };
+
+    const createRoom = () => {
+        const newRoomId = Math.random().toString(36).substring(7).toUpperCase();
+        setRoomId(newRoomId);
+        setIsHost(true);
+        setGameMode("ONLINE");
+    };
+
+    const joinRoom = () => {
+        if (!joinRoomId) return;
+        setRoomId(joinRoomId);
+        setIsHost(false);
+        setGameMode("ONLINE");
     };
 
     const handleCardClick = (id: number) => {
         if (isLock || isWon) return;
+
+        // Turn Logic for Online
+        if (gameMode === 'ONLINE') {
+            if (!isConnected) return;
+            const amIPlayer1 = isHost;
+            if (amIPlayer1 && currentPlayer !== 1) return;
+            if (!amIPlayer1 && currentPlayer !== 2) return;
+        }
 
         const clickedCard = cards.find(c => c.id === id);
         if (!clickedCard || clickedCard.flipped || clickedCard.matched) return;
@@ -108,6 +181,11 @@ const MemoryMatch = () => {
         const newFlippedCards = [...flippedCards, clickedCard];
         setFlippedCards(newFlippedCards);
 
+        // Sync Partial Move (Just the flip)
+        if (gameMode === 'ONLINE') {
+            sendMove({ cards: newCards });
+        }
+
         if (newFlippedCards.length === 2) {
             setIsLock(true);
             setMoves(m => m + 1);
@@ -120,7 +198,7 @@ const MemoryMatch = () => {
         const isMatch = card1.matchId === card2.matchId;
 
         if (isMatch) {
-            playSound('win'); // Small success sound
+            playSound('win');
             const matchedCards = currentCards.map(c =>
                 c.matchId === card1.matchId ? { ...c, matched: true } : c
             );
@@ -128,11 +206,28 @@ const MemoryMatch = () => {
             setFlippedCards([]);
             setIsLock(false);
 
+            // Update Score for Current Player
+            let newScores = { ...scores };
+            if (gameMode === 'ONLINE') {
+                newScores = {
+                    ...scores,
+                    [currentPlayer]: scores[currentPlayer] + 1
+                };
+                setScores(newScores);
+            }
+
+            // Sync Match
+            if (gameMode === 'ONLINE') {
+                // If match, player KEEPS turn
+                sendMove({ cards: matchedCards, scores: newScores });
+            }
+
             // Check win
             if (matchedCards.every(c => c.matched)) {
-                handleWin();
+                handleWin(newScores);
             }
         } else {
+            // No Match
             setTimeout(() => {
                 const resetCards = currentCards.map(c =>
                     (c.id === card1.id || c.id === card2.id) ? { ...c, flipped: false } : c
@@ -140,31 +235,52 @@ const MemoryMatch = () => {
                 setCards(resetCards);
                 setFlippedCards([]);
                 setIsLock(false);
+
+                if (gameMode === 'ONLINE') {
+                    // Switch turn
+                    const nextPlayer = currentPlayer === 1 ? 2 : 1;
+                    setCurrentPlayer(nextPlayer);
+                    sendMove({ cards: resetCards, currentPlayer: nextPlayer });
+                }
             }, 1000);
         }
     };
 
-    const handleWin = () => {
+    const handleWin = (finalScores?: { 1: number, 2: number }) => {
         setIsWon(true);
         setIsPlaying(false);
         playSound('win');
 
-        // Update Best Score
-        if (!bestScore || moves + 1 < bestScore) {
-            setBestScore(moves + 1);
-            localStorage.setItem("memory_best_score", (moves + 1).toString());
-            toast.success("New Best Score!", { icon: "👑" });
-        } else {
-            toast.success(`Complete in ${moves + 1} moves!`, { icon: "🧠" });
-        }
+        if (gameMode === 'ONLINE') {
+            sendMove({ isWon: true });
 
+            // Determine winner for confetti
+            const s = finalScores || scores;
+            if (s[1] > s[2] && isHost) triggerConfetti();
+            else if (s[2] > s[1] && !isHost) triggerConfetti();
+            else if (s[1] === s[2]) triggerConfetti(); // Draw
+
+        } else {
+            // Solo Win
+            if (!bestScore || moves + 1 < bestScore) {
+                setBestScore(moves + 1);
+                localStorage.setItem("memory_best_score", (moves + 1).toString());
+                toast.success("New Best Score!", { icon: "👑" });
+            } else {
+                toast.success(`Complete in ${moves + 1} moves!`, { icon: "🧠" });
+            }
+            triggerConfetti();
+        }
+    };
+
+    const triggerConfetti = () => {
         confetti({
             particleCount: 200,
             spread: 100,
             origin: { y: 0.6 },
             colors: ['#8b5cf6', '#d946ef', '#f43f5e']
         });
-    };
+    }
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col items-center py-6 px-4">
@@ -176,51 +292,129 @@ const MemoryMatch = () => {
                     </Button>
                     <HowToPlay
                         title="Memory Match"
-                        description="Test your memory by finding all matching pairs of cards."
+                        description="Find matching pairs of cards."
                         rules={[
-                            "Click a card to reveal its image.",
-                            "Click another card to try and find a match.",
-                            "If the cards match, they stay face up.",
-                            "If they don't match, they flip back over.",
-                            "Find all pairs in the fewest moves possible."
+                            "Click a card to reveal it.",
+                            "Find the matching pair to clear them.",
+                            "In Solo, race against time and moves.",
+                            "In Online PvP, finding a pair lets you keep your turn!"
                         ]}
                     />
                 </div>
 
-                <h1 className="text-3xl font-black bg-gradient-to-r from-violet-500 to-fuchsia-500 bg-clip-text text-transparent hidden md:block">Memory Match</h1>
+                <div className="flex flex-col items-center">
+                    <h1 className="text-3xl font-black bg-gradient-to-r from-violet-500 to-fuchsia-500 bg-clip-text text-transparent hidden md:block">Memory Match</h1>
+                    {gameMode === 'ONLINE' && (
+                        <div className="flex items-center gap-2 text-xs font-bold bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                            <Globe className="w-3 h-3" /> ONLINE {roomId ? `#${roomId}` : ''}
+                        </div>
+                    )}
+                </div>
 
-                <Button variant="outline" size="icon" onClick={initializeGame} className="rounded-full hover:rotate-180 transition-transform duration-500">
-                    <RotateCcw className="w-5 h-5" />
-                </Button>
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            setGameMode(prev => prev === 'SOLO' ? 'ONLINE' : 'SOLO');
+                            if (gameMode === 'ONLINE') { setRoomId(''); setIsHost(false); }
+                            initializeGame();
+                        }}
+                        className="gap-2"
+                    >
+                        {gameMode === 'SOLO' ? <Users className="w-4 h-4" /> : <Globe className="w-4 h-4" />}
+                        {gameMode === 'SOLO' ? 'PvP Mode' : 'Solo Mode'}
+                    </Button>
+                    <Button variant="outline" size="icon" onClick={() => initializeGame()} className="rounded-full hover:rotate-180 transition-transform duration-500">
+                        <RotateCcw className="w-5 h-5" />
+                    </Button>
+                </div>
             </div>
+
+            {/* Online Setup */}
+            {gameMode === "ONLINE" && !isConnected && (
+                <Card className="p-6 mb-8 w-full max-w-md bg-white/50 backdrop-blur">
+                    <h3 className="text-lg font-bold mb-4">Online Lobby</h3>
+                    <div className="flex flex-col gap-4">
+                        {!roomId ? (
+                            <div className="flex gap-2">
+                                <Button onClick={createRoom} className="flex-1">Create Room</Button>
+                                <div className="flex-1 flex gap-2">
+                                    <Input
+                                        placeholder="Room ID"
+                                        value={joinRoomId}
+                                        onChange={(e) => setJoinRoomId(e.target.value)}
+                                    />
+                                    <Button onClick={joinRoom} variant="secondary">Join</Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center">
+                                <p className="text-sm text-muted-foreground mb-2">Share this Room ID</p>
+                                <div className="flex items-center justify-center gap-2 bg-slate-100 dark:bg-slate-800 p-3 rounded-xl mb-4">
+                                    <code className="text-xl font-mono font-bold tracking-widest">{roomId}</code>
+                                    <Button variant="ghost" size="icon" onClick={() => { navigator.clipboard.writeText(roomId); toast.success("Copied!"); }}>
+                                        <Copy className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                                <div className="flex items-center justify-center gap-2 text-sm">
+                                    <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                                    Waiting for opponent...
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </Card>
+            )}
 
             {/* Stats Bar */}
             <div className="flex gap-4 mb-8 w-full max-w-md">
-                <Card className="flex-1 p-3 flex flex-col items-center justify-center bg-white/50 backdrop-blur border-violet-100 dark:border-violet-900/20">
-                    <div className="flex items-center gap-2 text-violet-500 mb-1">
-                        <Hash className="w-4 h-4" />
-                        <span className="text-xs font-bold uppercase tracking-wider">Moves</span>
-                    </div>
-                    <span className="text-2xl font-black text-slate-700 dark:text-slate-200">{moves}</span>
-                </Card>
-                <Card className="flex-1 p-3 flex flex-col items-center justify-center bg-white/50 backdrop-blur border-violet-100 dark:border-violet-900/20">
-                    <div className="flex items-center gap-2 text-pink-500 mb-1">
-                        <Timer className="w-4 h-4" />
-                        <span className="text-xs font-bold uppercase tracking-wider">Time</span>
-                    </div>
-                    <span className="text-2xl font-black text-slate-700 dark:text-slate-200">{formatTime(timer)}</span>
-                </Card>
-                <Card className="flex-1 p-3 flex flex-col items-center justify-center bg-white/50 backdrop-blur border-violet-100 dark:border-violet-900/20">
-                    <div className="flex items-center gap-2 text-yellow-500 mb-1">
-                        <Trophy className="w-4 h-4" />
-                        <span className="text-xs font-bold uppercase tracking-wider">Best</span>
-                    </div>
-                    <span className="text-2xl font-black text-slate-700 dark:text-slate-200">{bestScore || "-"}</span>
-                </Card>
+                {gameMode === 'SOLO' ? (
+                    <>
+                        <Card className="flex-1 p-3 flex flex-col items-center justify-center bg-white/50 backdrop-blur border-violet-100 dark:border-violet-900/20">
+                            <div className="flex items-center gap-2 text-violet-500 mb-1">
+                                <Hash className="w-4 h-4" />
+                                <span className="text-xs font-bold uppercase tracking-wider">Moves</span>
+                            </div>
+                            <span className="text-2xl font-black text-slate-700 dark:text-slate-200">{moves}</span>
+                        </Card>
+                        <Card className="flex-1 p-3 flex flex-col items-center justify-center bg-white/50 backdrop-blur border-violet-100 dark:border-violet-900/20">
+                            <div className="flex items-center gap-2 text-pink-500 mb-1">
+                                <Timer className="w-4 h-4" />
+                                <span className="text-xs font-bold uppercase tracking-wider">Time</span>
+                            </div>
+                            <span className="text-2xl font-black text-slate-700 dark:text-slate-200">{formatTime(timer)}</span>
+                        </Card>
+                        <Card className="flex-1 p-3 flex flex-col items-center justify-center bg-white/50 backdrop-blur border-violet-100 dark:border-violet-900/20">
+                            <div className="flex items-center gap-2 text-yellow-500 mb-1">
+                                <Trophy className="w-4 h-4" />
+                                <span className="text-xs font-bold uppercase tracking-wider">Best</span>
+                            </div>
+                            <span className="text-2xl font-black text-slate-700 dark:text-slate-200">{bestScore || "-"}</span>
+                        </Card>
+                    </>
+                ) : (
+                    <>
+                        <Card className={`flex-1 p-3 flex flex-col items-center justify-center border-2 transition-all ${currentPlayer === 1 ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-transparent bg-white/50'}`}>
+                            <div className="flex items-center gap-2 text-blue-500 mb-1">
+                                <Users className="w-4 h-4" />
+                                <span className="text-xs font-bold uppercase tracking-wider">{isHost ? "You" : "Opponent"}</span>
+                            </div>
+                            <span className="text-2xl font-black text-slate-700 dark:text-slate-200">{scores[1]}</span>
+                        </Card>
+                        <Card className={`flex-1 p-3 flex flex-col items-center justify-center border-2 transition-all ${currentPlayer === 2 ? 'border-pink-500 bg-pink-50 dark:bg-pink-900/20' : 'border-transparent bg-white/50'}`}>
+                            <div className="flex items-center gap-2 text-pink-500 mb-1">
+                                <Users className="w-4 h-4" />
+                                <span className="text-xs font-bold uppercase tracking-wider">{!isHost ? "You" : "Opponent"}</span>
+                            </div>
+                            <span className="text-2xl font-black text-slate-700 dark:text-slate-200">{scores[2]}</span>
+                        </Card>
+                    </>
+                )}
             </div>
 
             {/* Grid */}
-            <div className="p-4 grid grid-cols-4 gap-3 md:gap-4 max-w-xl mx-auto perspective-1000">
+            <div className={`p-4 grid grid-cols-4 gap-3 md:gap-4 max-w-xl mx-auto perspective-1000 ${gameMode === 'ONLINE' && !isConnected && playerCount < 2 ? 'opacity-50 pointer-events-none' : ''}`}>
                 <AnimatePresence>
                     {cards.map((card) => (
                         <motion.div
@@ -229,7 +423,7 @@ const MemoryMatch = () => {
                             animate={{ scale: 1, opacity: 1 }}
                             transition={{ delay: 0.05 * card.id }}
                             onClick={() => handleCardClick(card.id)}
-                            className="relative w-16 h-20 sm:w-20 sm:h-24 md:w-24 md:h-28 cursor-pointer group"
+                            className={`relative w-16 h-20 sm:w-20 sm:h-24 md:w-24 md:h-28 cursor-pointer group ${card.matched ? 'cursor-default' : ''}`}
                             style={{ perspective: 1000 }}
                         >
                             <motion.div
@@ -271,16 +465,20 @@ const MemoryMatch = () => {
                     >
                         <div className="flex items-center gap-2 text-xl">
                             <Trophy className="w-6 h-6 fill-yellow-300 text-yellow-300" />
-                            Level Complete!
+                            {gameMode === 'SOLO' ? "Level Complete!" : (scores[1] === scores[2] ? "It's a Draw!" : (
+                                (scores[1] > scores[2] && isHost) || (scores[2] > scores[1] && !isHost) ? "You Won!" : "You Lost!"
+                            ))}
                         </div>
-                        <p className="text-white/90 font-medium">You found all pairs in {moves} moves.</p>
+                        {gameMode === 'SOLO' && <p className="text-white/90 font-medium">You found all pairs in {moves} moves.</p>}
+
                         <Button
                             variant="secondary"
                             size="sm"
-                            onClick={initializeGame}
+                            onClick={() => initializeGame()}
                             className="mt-2 w-full font-bold"
+                            disabled={gameMode === 'ONLINE' && !isHost}
                         >
-                            Play Again
+                            {gameMode === 'ONLINE' && !isHost ? "Waiting for Host..." : "Play Again"}
                         </Button>
                     </motion.div>
                 )}

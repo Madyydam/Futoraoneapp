@@ -204,13 +204,10 @@ const TechMatch = () => {
             // Handle Mock Profiles (instant match simulation for demo)
             if (profileId.startsWith('m')) {
                 if (direction === 'right') {
-                    // Random chance of matching with a mock profile for fun
                     if (Math.random() > 0.4) { // 40% chance
                         setLastMatchedProfile(swipedProfile);
                         setMatchDialogOpen(true);
                         triggerConfetti();
-                    } else {
-                        // Silent like
                     }
                 }
                 return;
@@ -220,7 +217,30 @@ const TechMatch = () => {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) return;
 
-                const status = direction === 'right' ? 'pending' : 'rejected';
+                let status = direction === 'right' ? 'pending' : 'rejected';
+                let isMatch = false;
+
+                if (direction === 'right') {
+                    // Check if they already liked me
+                    const { data: reverseLike } = await supabase
+                        .from('tech_matches')
+                        .select('status')
+                        .eq('liker_id', profileId)
+                        .eq('liked_id', user.id)
+                        .maybeSingle();
+                    
+                    if (reverseLike && (reverseLike.status === 'pending' || reverseLike.status === 'matched')) {
+                        status = 'matched';
+                        isMatch = true;
+                        
+                        // Try to update their status to matched (might fail if RLS blocks, but we try)
+                        await supabase
+                            .from('tech_matches')
+                            .update({ status: 'matched' })
+                            .eq('liker_id', profileId)
+                            .eq('liked_id', user.id);
+                    }
+                }
 
                 // Insert match record
                 const { data, error } = await supabase
@@ -235,21 +255,20 @@ const TechMatch = () => {
 
                 if (error) throw error;
 
-                // Check if it was an instant match
-                if (data?.status === 'matched') {
+                // Check if it was an instant match (either via our logic or DB trigger)
+                if (status === 'matched' || data?.status === 'matched') {
                     setLastMatchedProfile(swipedProfile);
                     setMatchDialogOpen(true);
                     triggerConfetti();
 
-                    // Create message conversation
+                    // Create message conversation immediately
+                    // This ensures the chat exists when they click "Send Message"
                     const { error: convError } = await supabase.rpc('get_or_create_conversation', {
                         other_user_id: profileId
                     });
-
-                    if (convError) console.error("Error creating conversation:", convError);
+                     if (convError) console.error("Error creating conversation:", convError);
 
                 } else if (direction === 'right') {
-                    // Just a regular like
                     toast({
                         title: `You liked ${swipedProfile.full_name}`,
                         className: "bg-green-500 text-white border-none duration-1000",
@@ -347,17 +366,34 @@ const TechMatch = () => {
     }, [inputValue, aiGender, messages, toast]);
 
     const handleStartChat = async () => {
+        if (!lastMatchedProfile || !currentUser) return;
+
         setMatchDialogOpen(false);
-        // In a real app, this would get the conversation ID. 
-        // For now, let's assume we navigate to the messages tab and refresh
         toast({ title: "Starting chat...", description: "Connecting you with your match!" });
 
-        // If it's a real user, we'd normally wait for the conversation ID.
-        // For demo/mock:
-        // window.location.href = "/messages"; 
+        try {
+            // Create or get conversation
+            const { data, error } = await supabase.rpc('get_or_create_conversation', {
+                other_user_id: lastMatchedProfile.id
+            });
 
-        // Ideally:
-        // navigate(`/chat/${conversationId}`);
+            if (error) throw error;
+
+            if (data) {
+                navigate(`/chat/${data}`);
+            } else {
+                // Fallback if RPC returns nothing but no error (rare)
+                navigate('/messages');
+            }
+
+        } catch (error) {
+            console.error("Error starting chat:", error);
+            toast({
+                title: "Error",
+                description: "Could not start conversation.",
+                variant: "destructive"
+            });
+        }
     };
 
     const aiName = aiGender === 'female' ? 'Riya' : 'Arjun';

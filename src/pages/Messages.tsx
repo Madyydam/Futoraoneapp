@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/BottomNav";
-import { MessageCircle, Search, Users, ExternalLink } from "lucide-react";
+import { MessageCircle, Search, Users, ExternalLink, Heart } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { formatDistanceToNow } from "date-fns";
 import type { User } from "@supabase/supabase-js";
@@ -40,6 +40,7 @@ interface ConversationWithDetails {
   unreadCount: number;
   is_pinned?: boolean;
   is_archived?: boolean;
+  is_tech_match?: boolean;
 }
 
 const ConversationItem = React.memo(({
@@ -64,24 +65,32 @@ const ConversationItem = React.memo(({
     <ContextMenu>
       <ContextMenuTrigger>
         <Card
-          className={`border-0 shadow-sm hover:shadow-md transition-all cursor-pointer bg-card/50 hover:bg-card mb-2 ${conv.unreadCount > 0 ? 'bg-primary/5 ring-1 ring-primary/10' : ''} ${conv.is_pinned ? 'border-l-4 border-l-primary bg-primary/5' : ''}`}
+          className={`border-0 shadow-sm hover:shadow-md transition-all cursor-pointer mb-2 
+            ${conv.is_tech_match ? 'bg-pink-50 dark:bg-pink-900/10 border-l-4 border-l-pink-500' : 'bg-card/50 hover:bg-card'}
+            ${conv.unreadCount > 0 ? 'bg-primary/5 ring-1 ring-primary/10' : ''} 
+            ${conv.is_pinned && !conv.is_tech_match ? 'border-l-4 border-l-primary bg-primary/5' : ''}`}
           onClick={() => onClick(conv.id)}
         >
           <CardContent className="p-3 sm:p-4">
             <div className="flex items-center gap-4">
               <div className="relative">
-                <Avatar className="h-14 w-14 border-2 border-background shadow-sm">
+                <Avatar className={`h-14 w-14 border-2 shadow-sm ${conv.is_tech_match ? 'border-pink-200' : 'border-background'}`}>
                   <AvatarImage src={conv.otherUser.avatar_url || undefined} className="object-cover" />
-                  <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-bold">
+                  <AvatarFallback className={`${conv.is_tech_match ? 'bg-pink-100 text-pink-600' : 'bg-gradient-to-br from-primary/20 to-primary/10 text-primary'} font-bold`}>
                     {conv.otherUser.username[0]?.toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <OnlineIndicator userId={conv.otherUser.id} className="w-3.5 h-3.5 border-[3px]" />
+                {conv.is_tech_match && (
+                  <div className="absolute -bottom-1 -right-1 bg-pink-500 rounded-full p-1 border-2 border-white dark:border-slate-900">
+                    <Heart className="w-2.5 h-2.5 fill-white text-white" />
+                  </div>
+                )}
               </div>
 
               <div className="flex-1 min-w-0 grid gap-1">
                 <div className="flex items-center justify-between">
-                  <h3 className={`font-semibold text-base truncate flex items-center gap-2 ${conv.unreadCount > 0 ? 'text-foreground' : 'text-foreground/90'}`}>
+                  <h3 className={`font-semibold text-base truncate flex items-center gap-2 ${conv.unreadCount > 0 ? 'text-foreground' : 'text-foreground/90'} ${conv.is_tech_match ? 'text-pink-600 dark:text-pink-400' : ''}`}>
                     {conv.otherUser.full_name}
                     {conv.is_pinned && <Pin className="w-3.5 h-3.5 text-primary fill-primary rotate-45" />}
                   </h3>
@@ -186,6 +195,19 @@ const Messages = () => {
   const fetchConversations = useCallback(async () => {
     if (!user) return;
     try {
+      // Step 0: Fetch Tech Matches (Mutual)
+      const { data: matches } = await supabase
+        .from('tech_matches')
+        .select('liker_id, liked_id')
+        .eq('status', 'matched')
+        .or(`liker_id.eq.${user.id},liked_id.eq.${user.id}`);
+
+      const matchUserIds = new Set<string>();
+      matches?.forEach(m => {
+        if (m.liker_id === user.id) matchUserIds.add(m.liked_id);
+        else matchUserIds.add(m.liker_id);
+      });
+
       // Step 1: Fetch all conversation participations for current user
       const { data: conversationsData, error } = await supabase
         .from('conversation_participants')
@@ -244,6 +266,9 @@ const Messages = () => {
         const lastMsg = lastMessagesResults[idx]?.data;
         const unreadCount = unreadCountsResults[idx]?.count || 0;
 
+        const otherUserId = participant?.profiles?.id;
+        const isTechMatch = otherUserId && matchUserIds.has(otherUserId);
+
         return {
           id: cp.conversation_id,
           updated_at: cp.conversations.updated_at,
@@ -251,7 +276,8 @@ const Messages = () => {
           is_archived: cp.is_archived,
           otherUser: participant?.profiles,
           lastMessage: lastMsg,
-          unreadCount
+          unreadCount,
+          is_tech_match: !!isTechMatch
         };
       });
 

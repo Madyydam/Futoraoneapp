@@ -23,58 +23,44 @@ interface UserProfile {
 const AllPeople = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [users, setUsers] = useState<UserProfile[]>([]);
-    const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [page, setPage] = useState(0);
+    const [hasMore, setHasMore] = useState(true);
+    const USERS_PER_PAGE = 20;
+
     const navigate = useNavigate();
 
     useEffect(() => {
         fetchCurrentUser();
-        fetchAllUsers();
+        fetchUsers(0, "");
     }, []);
 
-    // Debounce search query to prevent filtering on every keystroke
+    // Debounce search query
     useEffect(() => {
         const timeoutId = setTimeout(() => {
-            if (searchQuery.trim()) {
-                const filtered = users.filter(
-                    (user) =>
-                        user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        user.full_name.toLowerCase().includes(searchQuery.toLowerCase())
-                );
-                setFilteredUsers(filtered);
-            } else {
-                setFilteredUsers(users);
-            }
-        }, 300); // 300ms debounce
+            // Reset page and fetch fresh results when search changes
+            setPage(0);
+            fetchUsers(0, searchQuery);
+        }, 500);
 
         return () => clearTimeout(timeoutId);
-    }, [searchQuery, users]);
+    }, [searchQuery]);
 
     const fetchCurrentUser = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         setCurrentUser(user);
     };
 
-    const fetchAllUsers = async () => {
-        setLoading(true);
+    const fetchUsers = async (pageNumber: number, query: string) => {
+        if (pageNumber === 0) setLoading(true);
+
         try {
             const { data: { user } } = await supabase.auth.getUser();
+            const start = pageNumber * USERS_PER_PAGE;
+            const end = start + USERS_PER_PAGE - 1;
 
-            // Optimization: Fetch profiles and counts in ONE query using Supabase foreign key aggregation
-            // Assuming 'follows' table has foreign keys set up correctly to profiles
-            // Note: If direct count aggregation isn't supported by your specific Supabase version/policy,
-            // we typically use a .select('*, followers:follows!follower_id(count), following:follows!following_id(count)')
-
-            // However, typical JS client might struggle with granular count maps if relations aren't perfect.
-            // Let's rely on the previous logic but parallelize correctly or check if we can simply use the count approach.
-
-            // Fallback Plan for Safety without changing Schema: 
-            // 1. Fetch all profiles.
-            // 2. Fetch all FOLLOWS relationships where involved (or just all follows if table is small, but that's risky).
-            // BETTER: Use the aggregation syntax if possible.
-
-            const { data, error } = await supabase
+            let supabaseQuery = supabase
                 .from("profiles")
                 .select(`
                     id, 
@@ -87,12 +73,18 @@ const AllPeople = () => {
                     following:follows!follower_id(count)
                 `)
                 .neq("id", user?.id || "")
-                .order("created_at", { ascending: false });
+                .order("created_at", { ascending: false })
+                .range(start, end);
+
+            if (query.trim()) {
+                supabaseQuery = supabaseQuery.or(`username.ilike.%${query}%,full_name.ilike.%${query}%`);
+            }
+
+            const { data, error } = await supabaseQuery;
 
             if (error) throw error;
 
-            // Transform data to flat structure
-            const usersWithCounts = (data || []).map((profile: any) => ({
+            const newUsers = (data || []).map((profile: any) => ({
                 id: profile.id,
                 username: profile.username,
                 full_name: profile.full_name,
@@ -103,14 +95,25 @@ const AllPeople = () => {
                 following_count: profile.following?.[0]?.count || 0,
             }));
 
-            setUsers(usersWithCounts);
-            setFilteredUsers(usersWithCounts);
+            if (pageNumber === 0) {
+                setUsers(newUsers);
+            } else {
+                setUsers(prev => [...prev, ...newUsers]);
+            }
+
+            setHasMore(newUsers.length === USERS_PER_PAGE);
+
         } catch (error) {
             console.error("Error fetching users:", error);
-            // Error handling/Retries could go here
         } finally {
             setLoading(false);
         }
+    };
+
+    const loadMore = () => {
+        const nextPage = page + 1;
+        setPage(nextPage);
+        fetchUsers(nextPage, searchQuery);
     };
 
     const handleSearch = useCallback((e: React.FormEvent) => {
@@ -126,7 +129,7 @@ const AllPeople = () => {
                     </Button>
                     <div className="flex-1">
                         <h1 className="text-2xl font-bold text-foreground">People</h1>
-                        <p className="text-sm text-muted-foreground">{filteredUsers.length} users</p>
+                        <p className="text-sm text-muted-foreground">{users.length} users</p>
                     </div>
                 </div>
                 <form onSubmit={handleSearch}>
@@ -160,18 +163,18 @@ const AllPeople = () => {
                             </Card>
                         ))}
                     </div>
-                ) : filteredUsers.length === 0 ? (
+                ) : users.length === 0 ? (
                     <Card className="bg-card border-border">
                         <CardContent className="p-12 text-center">
                             <Users className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
                             <p className="text-muted-foreground">
-                                {searchQuery ? "No users found" : "No users available"}
+                                {searchQuery ? "No users found matching your search" : "No users available"}
                             </p>
                         </CardContent>
                     </Card>
                 ) : (
                     <div className="space-y-3">
-                        {filteredUsers.map((user, index) => (
+                        {users.map((user, index) => (
                             <UserCard
                                 key={user.id}
                                 user={user}
@@ -179,6 +182,18 @@ const AllPeople = () => {
                                 index={index}
                             />
                         ))}
+                    </div>
+                )}
+
+                {hasMore && !loading && users.length > 0 && (
+                    <div className="mt-6 flex justify-center pb-8">
+                        <Button
+                            variant="outline"
+                            onClick={loadMore}
+                            className="min-w-[150px]"
+                        >
+                            Load More
+                        </Button>
                     </div>
                 )}
             </div>

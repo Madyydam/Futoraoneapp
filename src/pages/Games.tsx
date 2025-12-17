@@ -10,6 +10,11 @@ import {
     Scissors,
     CircleDot,
     ArrowLeft,
+    Zap,
+    Type,
+    Hash,
+    Palette,
+    Calculator,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import GameLeaderboard from "@/components/GameLeaderboard";
@@ -69,6 +74,61 @@ const games = [
         path: "/games/connect-four",
         difficulty: "Medium",
         dotColor: "bg-purple-400"
+    },
+    {
+        id: "speed-math",
+        title: "Speed Math",
+        description: "Math: Solve problems before time runs out!",
+        icon: <Calculator className="w-10 h-10 md:w-12 md:h-12 text-white" />,
+        gradient: "from-cyan-400 to-blue-600",
+        shadow: "shadow-cyan-500/30",
+        path: "/games/speed-math",
+        difficulty: "Medium",
+        dotColor: "bg-cyan-400"
+    },
+    {
+        id: "reflex-master",
+        title: "Reflex Master",
+        description: "Speed: Test your reaction time!",
+        icon: <Zap className="w-10 h-10 md:w-12 md:h-12 text-white" />,
+        gradient: "from-green-400 to-emerald-600",
+        shadow: "shadow-green-500/30",
+        path: "/games/reflex-master",
+        difficulty: "Easy",
+        dotColor: "bg-green-400"
+    },
+    {
+        id: "word-blitz",
+        title: "Word Blitz",
+        description: "Language: Unscramble tech words fast!",
+        icon: <Type className="w-10 h-10 md:w-12 md:h-12 text-white" />,
+        gradient: "from-blue-400 to-purple-600",
+        shadow: "shadow-blue-500/30",
+        path: "/games/word-blitz",
+        difficulty: "Medium",
+        dotColor: "bg-blue-400"
+    },
+    {
+        id: "number-merge",
+        title: "Number Merge",
+        description: "Puzzle: Merge tiles to reach 2048!",
+        icon: <Hash className="w-10 h-10 md:w-12 md:h-12 text-white" />,
+        gradient: "from-orange-400 to-red-600",
+        shadow: "shadow-orange-500/30",
+        path: "/games/number-merge",
+        difficulty: "Medium",
+        dotColor: "bg-orange-400"
+    },
+    {
+        id: "pattern-pro",
+        title: "Pattern Pro",
+        description: "Memory: Simon Says - Repeat the pattern!",
+        icon: <Palette className="w-10 h-10 md:w-12 md:h-12 text-white" />,
+        gradient: "from-indigo-400 to-purple-600",
+        shadow: "shadow-indigo-500/30",
+        path: "/games/pattern-pro",
+        difficulty: "Hard",
+        dotColor: "bg-indigo-400"
     }
 ];
 

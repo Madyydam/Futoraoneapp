@@ -7,11 +7,12 @@ import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useFCM } from "@/hooks/useFCM";
-import { useCurrentUserPresence } from "@/hooks/useUserPresence";
+
 import { ThemeProvider } from "@/components/theme-provider";
 import ScrollToTop from "@/components/ScrollToTop";
 import { CartoonLoader } from "@/components/CartoonLoader";
 import { AchievementListener } from "@/components/AchievementListener";
+import { UserPresenceProvider } from "@/contexts/UserPresenceContext";
 
 // Core pages - Eager loaded for speed
 import Index from "./pages/Index";
@@ -69,12 +70,18 @@ const TicTacToe = lazy(() => import("./pages/games/TicTacToe"));
 const MemoryMatch = lazy(() => import("./pages/games/MemoryMatch"));
 const RockPaperScissors = lazy(() => import("./pages/games/RockPaperScissors"));
 const ConnectFour = lazy(() => import("./pages/games/ConnectFour"));
+const ReflexMaster = lazy(() => import("./pages/games/ReflexMaster"));
+const WordBlitz = lazy(() => import("./pages/games/WordBlitz"));
+const NumberMerge = lazy(() => import("./pages/games/NumberMerge"));
+const PatternPro = lazy(() => import("./pages/games/PatternPro"));
+const SpeedMath = lazy(() => import("./pages/games/SpeedMath"));
 const Settings = lazy(() => import("./pages/Settings"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      gcTime: 1000 * 60 * 60 * 24, // 24 hours
+      gcTime: 1000 * 60 * 60, // 1 hour
+      staleTime: 1000 * 60 * 5, // 5 minutes (keep data fresh but avoid instant refetches)
     },
   },
 });
@@ -85,7 +92,7 @@ const persister = createSyncStoragePersister({
 
 const App = () => {
   // Note: We'll initialize FCM when user logs in via the auth flow
-  useCurrentUserPresence(); // Track user online status
+
 
   return (
     <PersistQueryClientProvider
@@ -97,65 +104,72 @@ const App = () => {
           <Toaster />
           <Sonner />
           <AchievementListener />
-          <BrowserRouter>
-            <ScrollToTop />
-            <Suspense fallback={<CartoonLoader />}>
-              <Routes>
-                <Route path="/" element={<Welcome />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/feed" element={<Feed />} />
-                <Route path="/create-post" element={<CreatePost />} />
-                <Route path="/explore" element={<Explore />} />
-                <Route path="/notifications" element={<Notifications />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/user/:userId" element={<UserProfile />} />
-                <Route path="/projects" element={<Projects />} />
-                <Route path="/ai-roadmap" element={<AIRoadmap />} />
-                <Route path="/ai-tools" element={<AIPage />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/category/:category" element={<CategoryPage />} />
-                <Route path="/topic/:topic" element={<TopicPage />} />
-                <Route path="/project/:projectId" element={<ProjectDetails />} />
-                <Route path="/search" element={<SearchResults />} />
-                <Route path="/messages" element={<Messages />} />
-                <Route path="/people" element={<AllPeople />} />
-                <Route path="/chat/:conversationId" element={<Chat />} />
-                <Route path="/create-story" element={<CreateStory />} />
-                <Route path="/story/:userId" element={<StoryView />} />
-                <Route path="/profile-views" element={<ProfileViews />} />
-                <Route path="/project-ideas" element={<ProjectIdeas />} />
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/admin/users" element={<AdminUsers />} />
-                <Route path="/admin/moderation" element={<AdminModeration />} />
-                <Route path="/admin/analytics" element={<AdminAnalytics />} />
-                <Route path="/admin/finance" element={<AdminFinance />} />
-                <Route path="/admin/settings" element={<AdminSettings />} />
-                <Route path="/ai-enhancer" element={<AIEnhancer />} />
+          <UserPresenceProvider>
+            <BrowserRouter>
+              <ScrollToTop />
+              <Suspense fallback={<CartoonLoader />}>
+                <Routes>
+                  <Route path="/" element={<Welcome />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/feed" element={<Feed />} />
+                  <Route path="/create-post" element={<CreatePost />} />
+                  <Route path="/explore" element={<Explore />} />
+                  <Route path="/notifications" element={<Notifications />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/user/:userId" element={<UserProfile />} />
+                  <Route path="/projects" element={<Projects />} />
+                  <Route path="/ai-roadmap" element={<AIRoadmap />} />
+                  <Route path="/ai-tools" element={<AIPage />} />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/category/:category" element={<CategoryPage />} />
+                  <Route path="/topic/:topic" element={<TopicPage />} />
+                  <Route path="/project/:projectId" element={<ProjectDetails />} />
+                  <Route path="/search" element={<SearchResults />} />
+                  <Route path="/messages" element={<Messages />} />
+                  <Route path="/people" element={<AllPeople />} />
+                  <Route path="/chat/:conversationId" element={<Chat />} />
+                  <Route path="/create-story" element={<CreateStory />} />
+                  <Route path="/story/:userId" element={<StoryView />} />
+                  <Route path="/profile-views" element={<ProfileViews />} />
+                  <Route path="/project-ideas" element={<ProjectIdeas />} />
+                  <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/admin/users" element={<AdminUsers />} />
+                  <Route path="/admin/moderation" element={<AdminModeration />} />
+                  <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                  <Route path="/admin/finance" element={<AdminFinance />} />
+                  <Route path="/admin/settings" element={<AdminSettings />} />
+                  <Route path="/ai-enhancer" element={<AIEnhancer />} />
 
-                <Route path="/founders-corner" element={<FoundersCorner />} />
-                <Route path="/gig-marketplace" element={<GigMarketplace />} />
-                <Route path="/applications" element={<ApplicationsDashboard />} />
-                <Route path="/tech-reels" element={<TechReels />} />
-                <Route path="/tech-match" element={<TechMatch />} />
-                <Route path="/messages/group/:groupId" element={<GroupChat />} />
-                <Route path="/post/:postId" element={<PostDetails />} />
+                  <Route path="/founders-corner" element={<FoundersCorner />} />
+                  <Route path="/gig-marketplace" element={<GigMarketplace />} />
+                  <Route path="/applications" element={<ApplicationsDashboard />} />
+                  <Route path="/tech-reels" element={<TechReels />} />
+                  <Route path="/tech-match" element={<TechMatch />} />
+                  <Route path="/messages/group/:groupId" element={<GroupChat />} />
+                  <Route path="/post/:postId" element={<PostDetails />} />
 
-                {/* Games */}
-                <Route path="/games" element={<Games />} />
-                <Route path="/games/dots-and-boxes" element={<DotsAndBoxes />} />
-                <Route path="/games/tic-tac-toe" element={<TicTacToe />} />
-                <Route path="/games/memory-match" element={<MemoryMatch />} />
-                <Route path="/games/rock-paper-scissors" element={<RockPaperScissors />} />
-                <Route path="/games/connect-four" element={<ConnectFour />} />
+                  {/* Games */}
+                  <Route path="/games" element={<Games />} />
+                  <Route path="/games/dots-and-boxes" element={<DotsAndBoxes />} />
+                  <Route path="/games/tic-tac-toe" element={<TicTacToe />} />
+                  <Route path="/games/memory-match" element={<MemoryMatch />} />
+                  <Route path="/games/rock-paper-scissors" element={<RockPaperScissors />} />
+                  <Route path="/games/connect-four" element={<ConnectFour />} />
+                  <Route path="/games/reflex-master" element={<ReflexMaster />} />
+                  <Route path="/games/word-blitz" element={<WordBlitz />} />
+                  <Route path="/games/number-merge" element={<NumberMerge />} />
+                  <Route path="/games/pattern-pro" element={<PatternPro />} />
+                  <Route path="/games/speed-math" element={<SpeedMath />} />
 
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </BrowserRouter>
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </BrowserRouter>
+          </UserPresenceProvider>
         </TooltipProvider>
       </ThemeProvider>
     </PersistQueryClientProvider>
