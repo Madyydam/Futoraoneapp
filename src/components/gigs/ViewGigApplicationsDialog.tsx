@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Briefcase, Clock, IndianRupee, FileText } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { CreateReviewDialog } from "@/components/CreateReviewDialog";
 
 interface GigApplication {
     id: string;
@@ -166,12 +167,24 @@ export const ViewGigApplicationsDialog = ({ gigId, gigTitle }: ViewGigApplicatio
                                             <p className="whitespace-pre-wrap">{app.proposal}</p>
                                         </div>
 
-                                        <Button
-                                            className="w-full bg-green-600 hover:bg-green-700 text-white"
-                                            onClick={() => handleHire(app.id, app.applicant_id, app.bid_amount)}
-                                        >
-                                            Hire Applicant
-                                        </Button>
+                                        {app.status === 'accepted' ? (
+                                            <div className="space-y-2">
+                                                <Button className="w-full bg-green-100 text-green-800 hover:bg-green-200" disabled>
+                                                    Hired
+                                                </Button>
+                                                <CreateReviewDialog
+                                                    revieweeId={app.applicant_id}
+                                                    revieweeName={app.applicant?.full_name || "Applicant"}
+                                                />
+                                            </div>
+                                        ) : (
+                                            <Button
+                                                className="w-full bg-green-600 hover:bg-green-700 text-white"
+                                                onClick={() => handleHire(app.id, app.applicant_id, app.bid_amount)}
+                                            >
+                                                Hire Applicant
+                                            </Button>
+                                        )}
                                     </div>
                                 ))}
                             </div>

@@ -10,9 +10,10 @@ import { useQueryClient } from "@tanstack/react-query";
 interface ReviewDialogProps {
     revieweeId: string;
     revieweeName: string;
+    trigger?: React.ReactNode;
 }
 
-export function CreateReviewDialog({ revieweeId, revieweeName }: ReviewDialogProps) {
+export function CreateReviewDialog({ revieweeId, revieweeName, trigger }: ReviewDialogProps) {
     const [open, setOpen] = useState(false);
     const [rating, setRating] = useState(0);
     const [comment, setComment] = useState("");
@@ -78,10 +79,12 @@ export function CreateReviewDialog({ revieweeId, revieweeName }: ReviewDialogPro
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                    <Star className="w-4 h-4" />
-                    Write Review
-                </Button>
+                {trigger || (
+                    <Button variant="outline" className="gap-2">
+                        <Star className="w-4 h-4" />
+                        Write Review
+                    </Button>
+                )}
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
@@ -98,8 +101,8 @@ export function CreateReviewDialog({ revieweeId, revieweeName }: ReviewDialogPro
                             >
                                 <Star
                                     className={`w-8 h-8 ${star <= rating
-                                            ? "fill-yellow-400 text-yellow-400"
-                                            : "text-muted-foreground"
+                                        ? "fill-yellow-400 text-yellow-400"
+                                        : "text-muted-foreground"
                                         }`}
                                 />
                             </button>

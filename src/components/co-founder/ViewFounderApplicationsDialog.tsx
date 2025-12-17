@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Mail, ExternalLink, MessageSquare } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { CreateReviewDialog } from "@/components/CreateReviewDialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface Application {
     id: string;
@@ -31,6 +33,7 @@ export const ViewFounderApplicationsDialog = ({ listingId, listingRole }: ViewFo
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [applications, setApplications] = useState<Application[]>([]);
+    const { toast } = useToast();
 
     useEffect(() => {
         if (open) {
@@ -67,6 +70,38 @@ export const ViewFounderApplicationsDialog = ({ listingId, listingRole }: ViewFo
             setApplications(data || []);
         } catch (error) {
             console.error("Error fetching applications:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleAccept = async (applicationId: string) => {
+        try {
+            setLoading(true);
+
+            // Update Application Status
+            const { error: appError } = await supabase
+                .from('founder_applications')
+                .update({ status: 'accepted' })
+                .eq('id', applicationId);
+
+            if (appError) throw appError;
+
+            toast({
+                title: "Application Accepted",
+                description: "You have accepted this co-founder application.",
+            });
+
+            // Refresh
+            fetchApplications();
+
+        } catch (error) {
+            console.error("Error accepting application:", error);
+            toast({
+                title: "Error",
+                description: "Failed to accept application",
+                variant: "destructive",
+            });
         } finally {
             setLoading(false);
         }
@@ -129,6 +164,27 @@ export const ViewFounderApplicationsDialog = ({ listingId, listingRole }: ViewFo
                                             <MessageSquare className="w-4 h-4" />
                                             <span className="font-semibold">Contact:</span>
                                             <span className="select-all">{app.contact_info}</span>
+                                        </div>
+
+                                        <div className="mt-4">
+                                            {app.status === 'accepted' ? (
+                                                <div className="space-y-2">
+                                                    <Button className="w-full bg-green-100 text-green-800 hover:bg-green-200" disabled>
+                                                        Accepted as Co-Founder
+                                                    </Button>
+                                                    <CreateReviewDialog
+                                                        revieweeId={app.applicant_id}
+                                                        revieweeName={app.applicant?.full_name || "Applicant"}
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <Button
+                                                    className="w-full"
+                                                    onClick={() => handleAccept(app.id)}
+                                                >
+                                                    Accept Application
+                                                </Button>
+                                            )}
                                         </div>
                                     </div>
                                 ))}

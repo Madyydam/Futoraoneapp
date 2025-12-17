@@ -10,6 +10,7 @@ import { ViewFounderApplicationsDialog } from "@/components/co-founder/ViewFound
 import { ViewGigApplicationsDialog } from "@/components/gigs/ViewGigApplicationsDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { BottomNav } from "@/components/BottomNav";
+import { CreateReviewDialog } from "@/components/CreateReviewDialog";
 
 const ApplicationsDashboard = () => {
     const navigate = useNavigate();
@@ -33,53 +34,56 @@ const ApplicationsDashboard = () => {
                 return;
             }
 
-            // Fetch founder listings with application counts
-            const { data: founderData, error: founderError } = await supabase
-                .from('founder_listings')
-                .select(`
-                    *,
-                    applications:founder_applications(count)
-                `)
-                .eq('user_id', user.id);
+            // Fetch all data in parallel
+            const [founderResult, gigResult, sentFounderResult, sentGigResult] = await Promise.all([
+                // Fetch founder listings with application counts
+                supabase
+                    .from('founder_listings')
+                    .select(`
+                        *,
+                        applications:founder_applications(count)
+                    `)
+                    .eq('user_id', user.id),
 
-            if (founderError) throw founderError;
-            setFounderListings(founderData || []);
+                // Fetch gigs with application counts
+                supabase
+                    .from('gig_listings')
+                    .select(`
+                        *,
+                        applications:gig_applications(count)
+                    `)
+                    .eq('user_id', user.id),
 
-            // Fetch gigs with application counts
-            const { data: gigData, error: gigError } = await supabase
-                .from('gig_listings')
-                .select(`
-                    *,
-                    applications:gig_applications(count)
-                `)
-                .eq('user_id', user.id);
+                // Fetch sent founder applications
+                supabase
+                    .from('founder_applications')
+                    .select(`
+                        *,
+                        listing:founder_listings(*)
+                    `)
+                    .eq('applicant_id', user.id),
 
-            if (gigError) throw gigError;
-            setGigListings(gigData || []);
+                // Fetch sent gig applications
+                supabase
+                    .from('gig_applications')
+                    .select(`
+                        *,
+                        listing:gig_listings(*)
+                    `)
+                    .eq('applicant_id', user.id)
+            ]);
 
-            // Fetch sent founder applications
-            const { data: sentFounderData, error: sentFounderError } = await supabase
-                .from('founder_applications')
-                .select(`
-                    *,
-                    listing:founder_listings(*)
-                `)
-                .eq('applicant_id', user.id);
+            if (founderResult.error) throw founderResult.error;
+            setFounderListings(founderResult.data || []);
 
-            if (sentFounderError) throw sentFounderError;
-            setSentFounderApps(sentFounderData || []);
+            if (gigResult.error) throw gigResult.error;
+            setGigListings(gigResult.data || []);
 
-            // Fetch sent gig applications
-            const { data: sentGigData, error: sentGigError } = await supabase
-                .from('gig_applications')
-                .select(`
-                    *,
-                    listing:gig_listings(*)
-                `)
-                .eq('applicant_id', user.id);
+            if (sentFounderResult.error) throw sentFounderResult.error;
+            setSentFounderApps(sentFounderResult.data || []);
 
-            if (sentGigError) throw sentGigError;
-            setSentGigApps(sentGigData || []);
+            if (sentGigResult.error) throw sentGigResult.error;
+            setSentGigApps(sentGigResult.data || []);
 
 
         } catch (error) {
@@ -236,7 +240,17 @@ const ApplicationsDashboard = () => {
                                                             <h4 className="font-semibold">{app.listing?.role_needed || "Unknown Role"}</h4>
                                                             <p className="text-sm text-muted-foreground">{app.listing?.industry}</p>
                                                         </div>
-                                                        <Badge variant="outline">{new Date(app.created_at).toLocaleDateString()}</Badge>
+                                                        <div className="flex flex-col items-end gap-2">
+                                                            <Badge variant={app.status === 'accepted' ? "default" : "outline"} className={app.status === 'accepted' ? "bg-green-500 hover:bg-green-600" : ""}>
+                                                                {app.status === 'accepted' ? "Accepted" : new Date(app.created_at).toLocaleDateString()}
+                                                            </Badge>
+                                                            {app.status === 'accepted' && (
+                                                                <CreateReviewDialog
+                                                                    revieweeId={app.listing?.user_id}
+                                                                    revieweeName="Founder"
+                                                                />
+                                                            )}
+                                                        </div>
                                                     </div>
                                                     <div className="bg-muted p-3 rounded-md text-sm italic">
                                                         "{app.message}"
@@ -274,7 +288,17 @@ const ApplicationsDashboard = () => {
                                                             <h4 className="font-semibold">{app.listing?.title || "Unknown Gig"}</h4>
                                                             <p className="text-sm text-muted-foreground">Bid: ₹{app.bid_amount}</p>
                                                         </div>
-                                                        <Badge variant="outline">{new Date(app.created_at).toLocaleDateString()}</Badge>
+                                                        <div className="flex flex-col items-end gap-2">
+                                                            <Badge variant={app.status === 'accepted' ? "default" : "outline"} className={app.status === 'accepted' ? "bg-green-500 hover:bg-green-600" : ""}>
+                                                                {app.status === 'accepted' ? "Accepted" : new Date(app.created_at).toLocaleDateString()}
+                                                            </Badge>
+                                                            {app.status === 'accepted' && (
+                                                                <CreateReviewDialog
+                                                                    revieweeId={app.listing?.user_id}
+                                                                    revieweeName="Client"
+                                                                />
+                                                            )}
+                                                        </div>
                                                     </div>
                                                     <div className="bg-muted p-3 rounded-md text-sm italic">
                                                         "{app.proposal}"
