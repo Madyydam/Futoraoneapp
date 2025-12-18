@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { GigListing, GigCard } from "@/components/gigs/GigCard";
 import { CreateGigDialog } from "@/components/gigs/CreateGigDialog";
