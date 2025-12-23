@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, memo, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Trophy,
@@ -53,7 +53,7 @@ const IconMap: { [key: string]: React.ElementType } = {
     'Star': Star
 };
 
-export const AchievementShowcase = ({ userId }: { userId?: string }) => {
+export const AchievementShowcase = memo(({ userId }: { userId?: string }) => {
     const [activeTab, setActiveTab] = useState<'badges' | 'leaderboard'>('badges');
     const [achievements, setAchievements] = useState<Achievement[]>([]);
     const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
@@ -63,90 +63,75 @@ export const AchievementShowcase = ({ userId }: { userId?: string }) => {
     const [currentViewerId, setCurrentViewerId] = useState<string | null>(null);
     const { toast } = useToast();
 
-    useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
-            try {
-                // Determine which user to fetch for
-                let targetUserId = userId;
-                if (!targetUserId) {
-                    const { data: { user } } = await supabase.auth.getUser();
-                    if (user) targetUserId = user.id;
-                }
-
-                if (!targetUserId) return;
-
-                setCurrentViewerId(targetUserId);
-
-                // 1. Fetch all available achievements
-                const { data: allAchievements, error: achievementsError } = await supabase
-                    .from('achievements')
-                    .select('*');
-
-                if (achievementsError) throw achievementsError;
-
-                // 2. Fetch user's unlocked achievements
-                const { data: userUnlocks, error: unlocksError } = await supabase
-                    .from('user_achievements')
-                    .select('achievement_id, unlocked_at')
-                    .eq('user_id', targetUserId);
-
-                if (unlocksError) throw unlocksError;
-
-                // Merge data
-                const unlocksMap = new Map(userUnlocks?.map(u => [u.achievement_id, u.unlocked_at]));
-
-                const mergedAchievements = allAchievements?.map(ach => ({
-                    ...ach,
-                    unlocked_at: unlocksMap.get(ach.id) || undefined
-                })) || [];
-
-                setAchievements(mergedAchievements);
-
-                // 3. Fetch ALL users ordered by XP
-                const { data: allUsers, error: leaderboardError } = await supabase
-                    .from('profiles')
-                    .select('id, username, avatar_url, xp, level')
-                    .order('xp', { ascending: false })
-                    .limit(100); // Get top 100 for accurate ranking
-
-                if (leaderboardError) throw leaderboardError;
-
-                // Find current user's rank in the full list
-                const userIndex = allUsers?.findIndex(u => u.id === targetUserId) ?? -1;
-                const userRankNumber = userIndex !== -1 ? userIndex + 1 : null;
-
-                // ALWAYS show only top 3 users
-                const displayedUsers = allUsers?.slice(0, 3) || [];
-
-                // Keep track of current user rank for potential display elsewhere
-                if (userRankNumber && userRankNumber > 3) {
-                    const userData = allUsers[userIndex];
-                    setCurrentUserRank({
-                        rank: userRankNumber,
-                        user: userData
-                    });
-                } else {
-                    setCurrentUserRank(null); // User is in top 3, no need to show separately
-                }
-
-                setLeaderboard(displayedUsers);
-
-            } catch (error) {
-                console.error("Error fetching gamification data:", error);
-                toast({
-                    title: "Error loading achievements",
-                    description: "Could not load gamification data.",
-                    variant: "destructive",
-                });
-            } finally {
-                setLoading(false);
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        try {
+            // Determine which user to fetch for
+            let targetId = userId;
+            if (!targetId) {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) targetId = user.id;
             }
-        };
 
+            if (!targetId) return;
+
+            setCurrentViewerId(targetId);
+
+            // Fetch everything in parallel
+            const [allAchievementsRes, userUnlocksRes, leaderboardRes] = await Promise.all([
+                supabase.from('achievements').select('*'),
+                supabase.from('user_achievements').select('achievement_id, unlocked_at').eq('user_id', targetId),
+                supabase.from('profiles').select('id, username, avatar_url, xp, level').order('xp', { ascending: false }).limit(100)
+            ]);
+
+            if (allAchievementsRes.error) throw allAchievementsRes.error;
+            if (userUnlocksRes.error) throw userUnlocksRes.error;
+            if (leaderboardRes.error) throw leaderboardRes.error;
+
+            // Merge achievements
+            const unlocksMap = new Map(userUnlocksRes.data?.map(u => [u.achievement_id, u.unlocked_at]));
+            const mergedAchievements = allAchievementsRes.data?.map(ach => ({
+                ...ach,
+                unlocked_at: unlocksMap.get(ach.id) || undefined
+            })) || [];
+
+            setAchievements(mergedAchievements);
+
+            // Process leaderboard
+            const allUsers = leaderboardRes.data || [];
+            const userIndex = allUsers.findIndex(u => u.id === targetId);
+            const userRankNumber = userIndex !== -1 ? userIndex + 1 : null;
+
+            setLeaderboard(allUsers.slice(0, 3));
+
+            if (userRankNumber && userRankNumber > 3) {
+                setCurrentUserRank({
+                    rank: userRankNumber,
+                    user: allUsers[userIndex]
+                });
+            } else {
+                setCurrentUserRank(null);
+            }
+
+        } catch (error) {
+            console.error("Error fetching gamification data:", error);
+            toast({
+                title: "Error loading achievements",
+                description: "Could not load gamification data.",
+                variant: "destructive",
+            });
+        } finally {
+            setLoading(false);
+        }
+    }, [userId, toast]);
+
+    useEffect(() => {
         fetchData();
+    }, [fetchData]);
 
-        // Real-time subscription for XP updates
+    useEffect(() => {
+        if (!currentViewerId) return;
+
         const channel = supabase
             .channel('xp-updates-achievement')
             .on(
@@ -154,13 +139,18 @@ export const AchievementShowcase = ({ userId }: { userId?: string }) => {
                 { event: '*', schema: 'public', table: 'profiles' },
                 (payload) => {
                     const updatedUser = payload.new as any;
-                    // Only refetch if the updated user is in the current leaderboard or is the target user
                     const isInLeaderboard = leaderboard.some(u => u.id === updatedUser.id);
-                    const isTargetUser = updatedUser.id === targetUserId;
-
-                    if (isInLeaderboard || isTargetUser) {
-                        console.log('Relevant Profile XP updated!', payload);
-                        fetchData(); // Refetch leaderboard
+                    if (isInLeaderboard || updatedUser.id === currentViewerId) {
+                        fetchData();
+                    }
+                }
+            )
+            .on(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'user_achievements' },
+                (payload) => {
+                    if ((payload.new as any).user_id === currentViewerId) {
+                        fetchData();
                     }
                 }
             )
@@ -169,9 +159,9 @@ export const AchievementShowcase = ({ userId }: { userId?: string }) => {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [userId, toast]);
+    }, [currentViewerId, fetchData, leaderboard]);
 
-    const handleShare = async () => {
+    const handleShare = useCallback(async () => {
         const unlockedCount = achievements.filter(a => a.unlocked_at).length;
         const totalXp = achievements.reduce((acc, curr) => acc + (curr.unlocked_at ? curr.xp_reward : 0), 0);
         const shareText = `I've unlocked ${unlockedCount} achievements and earned ${totalXp} XP on FutoraOne! 🚀`;
@@ -193,7 +183,7 @@ export const AchievementShowcase = ({ userId }: { userId?: string }) => {
                 description: "Show off your stats!",
             });
         }
-    };
+    }, [achievements, toast]);
 
     // Enhanced animation variants
     const containerVariants = {
@@ -572,4 +562,6 @@ export const AchievementShowcase = ({ userId }: { userId?: string }) => {
             </div>
         </Card >
     );
-};
+});
+
+export default AchievementShowcase;
