@@ -1,8 +1,0 @@
-{
-  "xpError": {
-    "code": "PGRST202",
-    "details": "Searched for the function public.give_xp with parameters amount, user_id or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.",
-    "hint": null,
-    "message": "Could not find the function public.give_xp(amount, user_id) in the schema cache"
-  }
-}
