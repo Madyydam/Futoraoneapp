@@ -153,19 +153,48 @@ const GameLeaderboard = ({ currentUserId }: { currentUserId?: string }) => {
                                 </div>
                             )}
 
-                            {/* List for Rest */}
+                            {/* List for Rest (Optimized for Context) */}
                             <div className="px-4 pb-4 space-y-2 max-h-[400px] overflow-y-auto mt-4">
-                                {filteredLeaderboard.slice(filteredLeaderboard.length >= 3 ? 3 : 0).map((entry, idx) => {
-                                    const rank = idx + (filteredLeaderboard.length >= 3 ? 4 : 1);
+                                {filteredLeaderboard.slice(3).filter((_, idx) => {
+                                    // Logic to show: 
+                                    // 1. If user is in top 6, show normally (simple continuity)
+                                    // 2. If user is further down, show user + 1 above + 1 below
+                                    // 3. Always show very bottom few if desired? No, just context.
+
+                                    const rank = idx + 4; // Because we sliced 3, so idx 0 is Rank 4
+
+                                    if (!currentUserId || !userRank) return true; // Show all if not logged in or unranked
+
+                                    if (userRank <= 6) return true; // Show everyone if user is near top
+
+                                    // Check if this entry is within +/- 1 of userRank
+                                    return Math.abs(rank - userRank) <= 1;
+                                }).map((entry) => {
+                                    // Find original index to get true rank
+                                    const trueRank = filteredLeaderboard.findIndex(p => p.user_id === entry.user_id) + 1;
+                                    const isCurrentUser = entry.user_id === currentUserId;
+
                                     return (
-                                        <div key={entry.user_id} className="flex items-center gap-4 p-3 rounded-xl bg-card border border-border/50 hover:bg-muted/50 transition-colors">
-                                            <span className="w-8 text-center font-bold text-muted-foreground">{rank}</span>
+                                        <div
+                                            key={entry.user_id}
+                                            className={cn(
+                                                "flex items-center gap-4 p-3 rounded-xl border transition-colors",
+                                                isCurrentUser ? "bg-primary/10 border-primary/50" : "bg-card border-border/50 hover:bg-muted/50"
+                                            )}
+                                        >
+                                            <span className={cn(
+                                                "w-8 text-center font-bold",
+                                                isCurrentUser ? "text-primary" : "text-muted-foreground"
+                                            )}>{trueRank}</span>
+
                                             <Avatar className="h-10 w-10">
                                                 <AvatarImage src={entry.avatar_url || undefined} />
                                                 <AvatarFallback>{entry.username[0]?.toUpperCase()}</AvatarFallback>
                                             </Avatar>
                                             <div className="flex-1">
-                                                <p className="font-semibold">{entry.full_name}</p>
+                                                <p className={cn("font-semibold", isCurrentUser && "text-primary")}>
+                                                    {entry.full_name} {isCurrentUser && "(You)"}
+                                                </p>
                                                 <p className="text-xs text-muted-foreground flex items-center gap-2">
                                                     @{entry.username}
                                                     <span className="w-1 h-1 bg-muted-foreground rounded-full" />
@@ -179,6 +208,11 @@ const GameLeaderboard = ({ currentUserId }: { currentUserId?: string }) => {
                                         </div>
                                     )
                                 })}
+
+                                {/* Show ellipsis if there's a gap */}
+                                {userRank && userRank > 6 && filteredLeaderboard.length > 6 && (
+                                    <div className="text-center py-2 text-xs text-muted-foreground">...</div>
+                                )}
                             </div>
 
                             {/* Fixed User Rank Footer */}

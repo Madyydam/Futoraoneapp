@@ -19,6 +19,9 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
+
+
+
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const [isLogin, setIsLogin] = useState(searchParams.get("mode") === "login");
@@ -28,6 +31,7 @@ const Auth = () => {
   const [username, setUsername] = useState("");
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [showLoginErrorDialog, setShowLoginErrorDialog] = useState(false);
   const navigate = useNavigate();
@@ -261,17 +265,17 @@ const Auth = () => {
 
                     <div className="grid grid-cols-1 gap-5">
                       <div className="space-y-2">
-                        <Label htmlFor="fullName">Full Name</Label>
+                        <Label htmlFor="fullName" className="text-white">Full Name</Label>
                         <div className="relative">
                           <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <Input id="fullName" placeholder="John Doe" value={fullName} onChange={(e) => setFullName(e.target.value)} className="pl-10 h-11 bg-secondary/30 border-white/10 focus:border-primary/50" required />
+                          <Input id="fullName" placeholder="Name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="pl-10 h-11 bg-secondary/30 border-white/10 focus:border-primary/50 text-white placeholder:text-muted-foreground" required />
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="username">Username</Label>
+                        <Label htmlFor="username" className="text-white">Username</Label>
                         <div className="relative">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono">@</span>
-                          <Input id="username" placeholder="johndoe" value={username} onChange={(e) => setUsername(e.target.value)} className="pl-8 h-11 bg-secondary/30 border-white/10 focus:border-primary/50" required />
+                          <Input id="username" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} className="pl-8 h-11 bg-secondary/30 border-white/10 focus:border-primary/50 text-white placeholder:text-muted-foreground" required />
                         </div>
                       </div>
                     </div>
@@ -280,23 +284,23 @@ const Auth = () => {
               </AnimatePresence>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email" className="text-white">Email Address</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input id="email" type="email" placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10 h-11 bg-secondary/30 border-white/10 focus:border-primary/50" required />
+                  <Input id="email" type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10 h-11 bg-secondary/30 border-white/10 focus:border-primary/50 text-white placeholder:text-muted-foreground" required />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password" className="text-white">Password</Label>
                   {isLogin && (
                     <a href="#" className="text-xs text-primary hover:underline">Forgot password?</a>
                   )}
                 </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 h-11 bg-secondary/30 border-white/10 focus:border-primary/50" required minLength={6} />
+                  <Input id="password" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 h-11 bg-secondary/30 border-white/10 focus:border-primary/50 text-white placeholder:text-muted-foreground" required minLength={6} />
                 </div>
               </div>
 

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { FounderListing, FounderListingCard } from "@/components/co-founder/FounderListingCard";
 import { CreateListingDialog } from "@/components/co-founder/CreateListingDialog";
@@ -20,36 +21,61 @@ const FoundersCorner = () => {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState("listings");
     const navigate = useNavigate();
+    const { toast } = useToast();
 
     const fetchListings = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('founder_listings')
-                .select(`
-          *,
-          profiles:user_id (
-            full_name,
-            username,
-            avatar_url
-          )
-        `)
+            // 1. Fetch listings
+            const { data: listingsData, error: listingsError } = await supabase
+                .from('founder_listings' as any)
+                .select('*')
                 .order('created_at', { ascending: false });
 
-            if (error) {
-                // Silently fallback to mock data if table doesn't exist
+            if (listingsError) throw listingsError;
+
+            if (!listingsData || listingsData.length === 0) {
                 setListings(MOCK_FOUNDER_LISTINGS);
                 return;
             }
 
-            // Integrate Mock Data if DB is empty
-            if (!data || data.length === 0) {
-                setListings(MOCK_FOUNDER_LISTINGS);
-            } else {
-                setListings(data);
+            // 2. Fetch profiles for these listings
+            const userIds = [...new Set((listingsData as any[]).map(l => l.user_id))];
+            const { data: profilesData, error: profilesError } = await supabase
+                .from('profiles')
+                .select('id, full_name, username, avatar_url')
+                .in('id', userIds);
+
+            if (profilesError) {
+                console.error("Error fetching profiles:", profilesError);
             }
-        } catch (error) {
-            // Silently fallback to mock data on any error
+
+            // 3. Merge data
+            const profilesMap = (profilesData || []).reduce((acc, profile) => {
+                acc[profile.id] = profile;
+                return acc;
+            }, {} as Record<string, any>);
+
+            const combinedListings = (listingsData as any[]).map(listing => ({
+                ...listing,
+                profiles: profilesMap[listing.user_id] || {
+                    full_name: 'Unknown User',
+                    username: 'unknown',
+                    avatar_url: null
+                }
+            }));
+
+            setListings(combinedListings as FounderListing[]);
+
+        } catch (error: any) {
+            console.error("Error in fetchListings:", error);
+            // Only fallback to mock if it's a "table not found" type error or critical failure
+            // But prefer showing real error if possible, or fallback with toast
+            toast({
+                title: "Error loading listings",
+                description: "Using offline demo data. " + error.message,
+                variant: "destructive"
+            });
             setListings(MOCK_FOUNDER_LISTINGS);
         } finally {
             setLoading(false);

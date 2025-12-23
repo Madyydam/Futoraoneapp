@@ -19,8 +19,8 @@ import Index from "./pages/Index";
 import Welcome from "./pages/Welcome";
 import Auth from "./pages/Auth";
 import Feed from "./pages/Feed";
-// import Messages from "./pages/Messages";
 import Profile from "./pages/Profile";
+import AIMentor from "./components/AIMentor";
 
 // Lazy load other pages
 const Explore = lazy(() => import("./pages/Explore"));
@@ -168,6 +168,7 @@ const App = () => {
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
+              <AIMentor />
             </BrowserRouter>
           </UserPresenceProvider>
         </TooltipProvider>

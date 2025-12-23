@@ -299,28 +299,40 @@ export const Stories = memo(() => {
         <>
             <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
                 {/* My Story */}
-                <div className="flex flex-col items-center gap-1 min-w-[72px] cursor-pointer relative">
+                <div
+                    className="flex flex-col items-center gap-1 min-w-[72px] cursor-pointer relative group"
+                    onClick={() => currentUser && allStories[currentUser.id] && handleUserClick(currentUser.id)}
+                >
                     <div className="relative">
-                        <Avatar className="w-16 h-16 border-2 border-background p-0.5">
+                        {/* Show gradient ring if user has stories */}
+                        {currentUser && allStories[currentUser.id] && (
+                            <div className="absolute inset-0 p-[2px] rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 ring-2 ring-black/30 dark:ring-transparent" />
+                        )}
+                        <Avatar className={`w-16 h-16 border-2 border-background ${currentUser && allStories[currentUser.id] ? 'relative z-10' : 'p-0.5'}`}>
                             <AvatarImage src={currentUser?.avatar_url} />
                             <AvatarFallback>ME</AvatarFallback>
                         </Avatar>
-                        <label htmlFor="story-upload" className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-0.5 border-2 border-background cursor-pointer hover:bg-primary/90 transition-colors">
-                            <Plus className="w-4 h-4" />
-                            <input
-                                type="file"
-                                id="story-upload"
-                                className="hidden"
-                                accept="image/*,video/*"
-                                onChange={handleFileUpload}
-                            />
-                        </label>
+                        {/* Only show plus button if user has NO stories */}
+                        {(!currentUser || !allStories[currentUser.id]) && (
+                            <label htmlFor="story-upload" className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-0.5 border-2 border-background cursor-pointer hover:bg-primary/90 transition-colors z-20">
+                                <Plus className="w-4 h-4" />
+                                <input
+                                    type="file"
+                                    id="story-upload"
+                                    className="hidden"
+                                    accept="image/*,video/*"
+                                    onChange={handleFileUpload}
+                                />
+                            </label>
+                        )}
                     </div>
-                    <span className="text-xs text-muted-foreground truncate w-full text-center">Your Story</span>
+                    <span className="text-xs text-muted-foreground truncate w-full text-center group-hover:text-foreground transition-colors">
+                        {currentUser && allStories[currentUser.id] ? 'Your Story' : 'Add Story'}
+                    </span>
                 </div>
 
-                {/* Other Users */}
-                {allUsers.map((user) => (
+                {/* Other Users (excluding current user) */}
+                {allUsers.filter(user => user.id !== currentUser?.id).map((user) => (
                     <div
                         key={user.id}
                         className="flex flex-col items-center gap-1 min-w-[72px] cursor-pointer group"

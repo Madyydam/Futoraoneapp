@@ -90,6 +90,12 @@ export const FeedPost = memo(({ post, currentUser, onLike, onSave, onShare, onDe
     navigate(`/post/${post.id}`);
   }, [navigate, post.id]);
 
+  // Memoize sanitized content to prevent expensive recalculations
+  const sanitizedContent = useMemo(
+    () => DOMPurify.sanitize(post.content.replace(/\n/g, '<br />')),
+    [post.content]
+  );
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 30, scale: 0.95 }}
@@ -153,9 +159,7 @@ export const FeedPost = memo(({ post, currentUser, onLike, onSave, onShare, onDe
           <div
             className="mb-4 prose dark:prose-invert max-w-none cursor-pointer hover:opacity-90 transition-opacity leading-relaxed"
             onClick={handlePostClick}
-            dangerouslySetInnerHTML={{
-              __html: DOMPurify.sanitize(post.content.replace(/\n/g, '<br />'))
-            }}
+            dangerouslySetInnerHTML={{ __html: sanitizedContent }}
           />
 
           {post.image_url && (

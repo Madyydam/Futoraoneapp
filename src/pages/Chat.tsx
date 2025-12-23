@@ -78,8 +78,9 @@ const Chat = () => {
   useEffect(() => {
     if (user && conversationId) {
       fetchConversationDetails();
-      subscribeToMessages();
+      const cleanup = subscribeToMessages();
       markMessagesAsRead();
+      return cleanup;
     }
   }, [user, conversationId]);
 
@@ -148,8 +149,9 @@ const Chat = () => {
           filter: `conversation_id=eq.${conversationId}`
         },
         (payload) => {
-          setMessages(prev => [...prev, payload.new as Message]);
+          // Only add if it's from another user (we already added our own messages immediately)
           if (payload.new.sender_id !== user?.id) {
+            setMessages(prev => [...prev, payload.new as Message]);
             markMessagesAsRead();
           }
         }
@@ -201,24 +203,34 @@ const Chat = () => {
     if (!newMessage.trim() || !user || !conversationId || sending) return;
 
     setSending(true);
+    const messageContent = newMessage.trim();
+    setNewMessage(""); // Clear input immediately for better UX
 
-    const { error } = await supabase.from("messages").insert({
+    const { data, error } = await supabase.from("messages").insert({
       conversation_id: conversationId,
       sender_id: user.id,
-      content: newMessage.trim(),
+      content: messageContent,
       is_read: false
-    });
+    }).select().single();
 
 
 
     if (error) {
+      console.error('Error sending message:', error);
       toast({
         title: "Error",
-        description: "Failed to send message",
+        description: error.message || "Failed to send message",
         variant: "destructive"
       });
+      setNewMessage(messageContent); // Restore the message on error
     } else {
-      setNewMessage("");
+      // Immediately add message to UI
+      setMessages(prev => [...prev, data as Message]);
+      // Update conversation timestamp
+      await supabase
+        .from("conversations")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", conversationId);
     }
 
     setSending(false);

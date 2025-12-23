@@ -100,7 +100,6 @@ const Feed = () => {
       </main>
 
       <BottomNav />
-      {aiMentor}
     </div>
   );
 };

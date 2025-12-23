@@ -1,4 +1,4 @@
-project_id = "forxnefbbsqwhdfadvkk"
+project_id = "sbzsgeokspmkewrmuqgi"
 
 [functions.manage-verification]
 verify_jwt = true

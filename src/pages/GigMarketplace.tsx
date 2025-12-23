@@ -195,33 +195,55 @@ const GigMarketplace = () => {
     const fetchGigs = useCallback(async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('gig_listings')
-                .select(`
-          *,
-          profiles:user_id (
-            full_name,
-            username,
-            avatar_url
-          )
-        `)
+            // 1. Fetch gigs
+            const { data: gigsData, error: gigsError } = await supabase
+                .from('gig_listings' as any)
+                .select('*')
                 .order('created_at', { ascending: false });
 
-            if (error) throw error;
+            if (gigsError) throw gigsError;
 
-            // Integrate Mock Data if DB is empty
-            if (!data || data.length === 0) {
+            if (!gigsData || gigsData.length === 0) {
                 setGigs(MOCK_GIG_LISTINGS);
-            } else {
-                setGigs(data);
+                return;
             }
-        } catch (error) {
+
+            // 2. Fetch profiles
+            const userIds = [...new Set((gigsData as any[]).map(g => g.user_id))];
+            const { data: profilesData, error: profilesError } = await supabase
+                .from('profiles')
+                .select('id, full_name, username, avatar_url')
+                .in('id', userIds);
+
+            if (profilesError) {
+                console.error("Error fetching profiles:", profilesError);
+            }
+
+            // 3. Merge
+            const profilesMap = (profilesData || []).reduce((acc, profile) => {
+                acc[profile.id] = profile;
+                return acc;
+            }, {} as Record<string, any>);
+
+            const combinedGigs = (gigsData as any[]).map(gig => ({
+                ...gig,
+                profiles: profilesMap[gig.user_id] || {
+                    full_name: 'Unknown User',
+                    username: 'unknown',
+                    avatar_url: null
+                }
+            }));
+
+            setGigs(combinedGigs as GigListing[]);
+
+        } catch (error: any) {
             console.error("Error fetching gigs:", error);
-            // Fallback to mock data on error
+            // Fallback to mock data on error but show toast
             setGigs(MOCK_GIG_LISTINGS);
             toast({
                 title: "Notice",
-                description: "Loaded demo gigs.",
+                description: "Loaded demo gigs. " + (error.message || ""),
+                variant: "destructive"
             });
         } finally {
             setLoading(false);

@@ -12,7 +12,7 @@ let envContent = '';
 try {
     envContent = fs.readFileSync(envPath, 'utf-8');
 } catch (e) {
-    console.error('Could not read .env file');
+    console.error('Could not read .env fil;e');
     process.exit(1);
 }
 

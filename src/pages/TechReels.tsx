@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, memo } from "react";
+import { useState, useEffect, useCallback, memo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Reel, ReelPlayer } from "@/components/reels/ReelPlayer";
 import { Loader2, Volume2, VolumeX } from "lucide-react";
@@ -56,31 +56,33 @@ const MOCK_REELS: Reel[] = [
 ];
 
 // Component to handle individual reel visibility
-const ReelWrapper = memo(({ reel, index, isActive, isMuted, toggleMute, onInView }: {
+const ReelWrapper = React.memo(({ reel, index, currentActiveIndex, isMuted }: {
     reel: Reel;
     index: number;
-    isActive: boolean;
+    currentActiveIndex: React.MutableRefObject<number>; // Pass ref for active index
     isMuted: boolean;
-    toggleMute: () => void;
-    onInView: (index: number) => void;
 }) => {
     const { ref, inView } = useInView({
-        threshold: 0.6, // Trigger when 60% visible
+        threshold: 0.75, // Trigger when 75% visible
+        triggerOnce: false,
     });
 
+    // Determine if this reel is the currently active one based on inView and the global active index
+    const isActive = inView && index === currentActiveIndex.current;
+
+    // Update the global active index when this reel comes into view
     useEffect(() => {
         if (inView) {
-            onInView(index);
+            currentActiveIndex.current = index;
         }
-    }, [inView, index, onInView]);
+    }, [inView, index, currentActiveIndex]);
 
     return (
-        <div ref={ref} className="snap-start shrink-0 h-full w-full">
+        <div ref={ref} className="h-screen snap-start snap-always flex items-center justify-center relative">
             <ReelPlayer
                 reel={reel}
                 isActive={isActive}
                 isMuted={isMuted}
-                toggleMute={toggleMute}
             />
         </div>
     );
@@ -92,11 +94,7 @@ const TechReels = memo(() => {
     const [reels, setReels] = useState<Reel[]>([]);
     const [loading, setLoading] = useState(true);
     const [isMuted, setIsMuted] = useState(true);
-    const [activeReelIndex, setActiveReelIndex] = useState(0);
-
-    const handleInView = useCallback((index: number) => {
-        setActiveReelIndex(index);
-    }, []);
+    const currentActiveIndex = useRef(0);
 
     useEffect(() => {
         fetchReels();
@@ -170,10 +168,8 @@ const TechReels = memo(() => {
                             key={reel.id}
                             reel={reel}
                             index={index}
-                            isActive={index === activeReelIndex}
+                            currentActiveIndex={currentActiveIndex}
                             isMuted={isMuted}
-                            toggleMute={toggleMute}
-                            onInView={handleInView}
                         />
                     ))
                 )}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useAIMentor } from "@/hooks/useAIMentor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,17 +21,49 @@ interface AICofounderChatProps {
 }
 
 export const AICofounderChat = ({ onApplyFilter }: AICofounderChatProps) => {
-    const [messages, setMessages] = useState<Message[]>([
-        {
+    // Use Real AI Hook
+    const { messages: aiMessages, sendMessage, isLoading: isAiLoading } = useAIMentor();
+
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [inputValue, setInputValue] = useState("");
+    const [isTyping, setIsTyping] = useState(false); // Can use isAiLoading but local state gives more control if needed? Actually isAiLoading is better.
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    // Sync AI hook messages to local UI state for display
+    useEffect(() => {
+        if (aiMessages.length === 0) {
+            // Ensure initial greeting is present
+            setMessages([{
+                id: "1",
+                text: "Namaste! I'm your AI Co-founder Arya. I can help you validate your idea, suggest equity splits, or find the perfect match. What's on your mind today?",
+                sender: 'ai',
+                type: 'text'
+            }]);
+            return;
+        }
+
+        const uiMessages: Message[] = aiMessages.map((m, i) => ({
+            id: i.toString(),
+            text: m.content,
+            sender: m.role === 'user' ? 'user' : 'ai',
+            type: 'text'
+        }));
+
+        // Append to initial
+        const initialMsg: Message = {
             id: "1",
             text: "Namaste! I'm your AI Co-founder Arya. I can help you validate your idea, suggest equity splits, or find the perfect match. What's on your mind today?",
             sender: 'ai',
             type: 'text'
-        }
-    ]);
-    const [inputValue, setInputValue] = useState("");
-    const [isTyping, setIsTyping] = useState(false);
-    const scrollRef = useRef<HTMLDivElement>(null);
+        };
+
+        setMessages([initialMsg, ...uiMessages]);
+
+    }, [aiMessages]);
+
+    useEffect(() => {
+        setIsTyping(isAiLoading);
+    }, [isAiLoading]);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -41,62 +74,14 @@ export const AICofounderChat = ({ onApplyFilter }: AICofounderChatProps) => {
     const handleSendMessage = async () => {
         if (!inputValue.trim()) return;
 
-        const userMsg: Message = {
-            id: Date.now().toString(),
-            text: inputValue,
-            sender: 'user'
-        };
-
-        setMessages(prev => [...prev, userMsg]);
         setInputValue("");
-        setIsTyping(true);
+        // isTyping handled by useEffect on isAiLoading
 
-        // Simulate AI processing
-        setTimeout(() => {
-            const response = generateResponse(userMsg.text);
-            setMessages(prev => [...prev, {
-                id: (Date.now() + 1).toString(),
-                text: response.text,
-                sender: 'ai',
-                type: response.type,
-                actionData: response.actionData
-            }]);
-            setIsTyping(false);
-        }, 1500);
-    };
-
-    const generateResponse = (input: string): { text: string, type?: 'text' | 'action', actionData?: any } => {
-        const lowerInput = input.toLowerCase();
-
-        if (lowerInput.includes("match") || lowerInput.includes("find") || lowerInput.includes("looking for")) {
-            return {
-                text: "I can help you find a co-founder. Based on current trends, are you looking for a technical partner or a business lead? I can filter the listings for you.",
-                type: 'action', // In a real app, this would trigger UI changes
-                actionData: {
-                    suggestions: ["Fintech", "HealthTech", "AI/ML"]
-                }
-            };
+        try {
+            await sendMessage(inputValue, 'mentor');
+        } catch (error) {
+            console.error("AI Error:", error);
         }
-
-        if (lowerInput.includes("equity") || lowerInput.includes("share")) {
-            return {
-                text: "Equity is tricky! For an early-stage CTO, 10-50% is standard depending on whether they take a salary. Are you pre-revenue?",
-                type: 'text'
-            };
-        }
-
-        if (lowerInput.includes("idea") || lowerInput.includes("validate")) {
-            return {
-                text: "Great ideas need validation. Have you spoken to at least 10 potential users? I suggest creating a landing page MVP first.",
-                type: 'text'
-            };
-        }
-
-        // Default response
-        return {
-            text: "That's interesting! Tell me more about your startup vision. I'm here to help you refine your pitch.",
-            type: 'text'
-        };
     };
 
     return (

@@ -194,6 +194,7 @@ const Messages = () => {
 
   const fetchConversations = useCallback(async () => {
     if (!user) return;
+    console.log('Fetching conversations for user:', user.id);
     try {
       // Step 0: Fetch Tech Matches (Mutual)
       const { data: matches } = await supabase
@@ -222,20 +223,48 @@ const Messages = () => {
         .eq('user_id', user.id)
         .limit(50); // Limit to most recent 50 conversations for performance
 
+      console.log('Conversations data:', conversationsData);
+      console.log('Error:', error);
+
       if (error) throw error;
       if (!conversationsData || conversationsData.length === 0) {
+        console.log('No conversations found for user');
         setConversations([]);
         return;
       }
 
       const convIds = conversationsData.map((cp: any) => cp.conversation_id);
+      console.log('Conversation IDs:', convIds);
 
-      // Step 2: Batch fetch all other participants in ONE query
-      const { data: allParticipants } = await supabase
+      // Step 2: Fetch participant user IDs
+      const { data: participantsList, error: participantsError } = await supabase
         .from('conversation_participants')
-        .select('conversation_id, profiles:user_id(id, username, full_name, avatar_url)')
+        .select('conversation_id, user_id')
         .in('conversation_id', convIds)
         .neq('user_id', user.id);
+
+      console.log('Participants list:', participantsList);
+      console.log('Participants error:', participantsError);
+
+      // Step 2b: Fetch profiles for those user IDs
+      let allParticipants: any[] = [];
+      if (participantsList && participantsList.length > 0) {
+        const userIds = participantsList.map(p => p.user_id);
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, username, full_name, avatar_url')
+          .in('id', userIds);
+
+        console.log('Profiles data:', profilesData);
+
+        // Combine participants with profiles
+        allParticipants = participantsList.map(p => ({
+          conversation_id: p.conversation_id,
+          profiles: profilesData?.find(prof => prof.id === p.user_id)
+        }));
+      }
+
+      console.log('Combined participants:', allParticipants);
 
       // Step 3: Batch fetch last message for each conversation
       const lastMessagesPromises = convIds.map(convId =>
@@ -281,6 +310,8 @@ const Messages = () => {
         };
       });
 
+      console.log('User conversations:', userConversations);
+
       // Sort: Pinned first, then by date
       const sorted = userConversations
         .filter(c => c.otherUser) // Filter out conversations where user might be deleted
@@ -293,6 +324,7 @@ const Messages = () => {
           return dateB - dateA;
         });
 
+      console.log('Sorted conversations:', sorted);
       setConversations(sorted as ConversationWithDetails[]);
     } catch (error) {
       console.error('Error fetching conversations:', error);
@@ -309,13 +341,27 @@ const Messages = () => {
   // Realtime subscription
   useEffect(() => {
     if (!user) return;
-    const channel = supabase.channel('chat_updates')
+
+    const channel = supabase
+      .channel('chat_updates')
       .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'messages' },
-        () => fetchConversations())
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        () => {
+          console.log('New message detected, refreshing conversations');
+          fetchConversations();
+        })
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'conversations' },
+        () => {
+          console.log('Conversation updated, refreshing');
+          fetchConversations();
+        })
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'conversation_participants', filter: `user_id=eq.${user.id}` },
-        () => fetchConversations())
+        () => {
+          console.log('Participant change detected, refreshing');
+          fetchConversations();
+        })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -397,6 +443,17 @@ const Messages = () => {
               Messages
             </h1>
             <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full"
+                onClick={() => fetchConversations()}
+                title="Refresh conversations"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16" />
+                </svg>
+              </Button>
               {activeTab === 'groups' && <CreateGroupDialog onGroupCreated={() => { }} />}
               <Button variant="ghost" size="icon" className="rounded-full" onClick={() => navigate('/search')}>
                 <MessageSquarePlus className="w-6 h-6 text-primary" />

@@ -11,6 +11,7 @@ import AIChat from "@/components/AIChat";
 import VideoBackground from "@/components/VideoBackground";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAIMentor } from "@/hooks/useAIMentor";
 
 // Swipe feature imports
 import { SwipeCard, Profile as SwipeProfile } from "@/components/tech-match/SwipeCard";
@@ -312,47 +313,78 @@ const TechMatch = () => {
         setIsTyping(false);
     }, [aiGender]);
 
-    // Optimize: useCallback for stable function reference passed to AIChat
-    const handleSendMessage = useCallback(async () => {
-        if (!inputValue.trim()) return;
+    // Use Real AI Hook
+    const { messages: aiMessages, sendMessage, isLoading: isAiLoading } = useAIMentor();
 
-        const newUserMessage: Message = {
-            id: Date.now().toString(),
-            text: inputValue,
-            sender: 'user',
+    // Sync AI hook messages to local UI state for display
+    useEffect(() => {
+        if (aiMessages.length === 0) return;
+
+        const lastMsg = aiMessages[aiMessages.length - 1];
+        // Only add if it's new (simple check by length or content)
+        // Better: Map all messages
+        const uiMessages: Message[] = aiMessages.map((m, i) => ({
+            id: i.toString(),
+            text: m.content,
+            sender: m.role === 'user' ? 'user' : 'ai',
             timestamp: new Date()
-        };
+        }));
 
-        setMessages(prev => [...prev, newUserMessage]);
-        setInputValue("");
-        setIsTyping(true);
+        // Prepend valid initial greeting if empty or just started
+        if (uiMessages.length === 0) {
+            const initialMessage = aiGender === 'female'
+                ? "yes"
+                : "Hey, I'm Arjun. Ready to build something incredible together?";
 
-        try {
-            // Hardcoded sequence for AI GF
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            setMessages([{
+                id: 'init',
+                text: initialMessage,
+                sender: 'ai',
+                timestamp: new Date()
+            }]);
+        } else {
+            // Keep initial greeting if not in hook? 
+            // complex. Let's just USE the hook messages + initial greeting.
+            // Actually, let's just REPLACE local state with hook state, 
+            // but we need to handle the initial greeting which the hook doesn't know about.
+            // We'll append hook messages to the initial greeting.
 
-            let reply = "I am listening...";
-            // Count AI messages currently in the conversation (excluding the one we are about to generate)
-            const aiMsgCount = messages.filter(m => m.sender === 'ai').length;
+            const initialMessage = aiGender === 'female'
+                ? "yes"
+                : "Hey, I'm Arjun. Ready to build something incredible together?";
 
-            if (aiGender === 'female') {
-                if (aiMsgCount === 1) reply = "I Love you too";
-                else if (aiMsgCount === 2) reply = "haa";
-                else if (aiMsgCount === 3) reply = "nahi";
-                else reply = "nahi";
-            } else {
-                reply = "I'm just a demo AI.";
-            }
-
-            const aiResponse: Message = {
-                id: (Date.now() + 1).toString(),
-                text: reply,
+            const initMsgObj: Message = {
+                id: 'init',
+                text: initialMessage,
                 sender: 'ai',
                 timestamp: new Date()
             };
 
-            setMessages(prev => [...prev, aiResponse]);
+            setMessages([initMsgObj, ...uiMessages]);
+        }
 
+        setIsTyping(false); // Stop typing when message arrives
+
+        // If last message is user, set typing true (waiting for AI)
+        const last = aiMessages[aiMessages.length - 1];
+        if (last.role === 'user') setIsTyping(true);
+
+    }, [aiMessages, aiGender]);
+
+
+    // Optimize: useCallback for stable function reference passed to AIChat
+    const handleSendMessage = useCallback(async () => {
+        if (!inputValue.trim()) return;
+
+        // Optimistically add user message to UI (handled by hook too, but for instant feel)
+        // Actually hook handles it.
+
+        setInputValue("");
+        setIsTyping(true);
+
+        try {
+            const mode = aiGender === 'female' ? 'female_companion' : 'male_companion';
+            await sendMessage(inputValue, mode);
         } catch (error) {
             console.error("AI Error:", error);
             toast({
@@ -360,10 +392,9 @@ const TechMatch = () => {
                 description: "Could not connect to AI service.",
                 variant: "destructive"
             });
-        } finally {
             setIsTyping(false);
         }
-    }, [inputValue, aiGender, messages, toast]);
+    }, [inputValue, aiGender, sendMessage, toast]);
 
     const handleStartChat = async () => {
         if (!lastMatchedProfile || !currentUser) return;
