@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useInView } from "react-intersection-observer";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -33,30 +34,39 @@ export const CommentSection = ({ postId, postAuthorId, currentUser }: CommentSec
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
 
+    const [hasLoaded, setHasLoaded] = useState(false);
+    const { ref, inView } = useInView({
+        triggerOnce: true,
+        rootMargin: "200px 0px", // Load when within 200px of viewport
+    });
+
     useEffect(() => {
-        fetchComments();
+        if (inView && !hasLoaded) {
+            setHasLoaded(true);
+            fetchComments();
 
-        // Subscribe to real-time comments
-        const channel = supabase
-            .channel(`comments-${postId}`)
-            .on(
-                "postgres_changes",
-                {
-                    event: "*",
-                    schema: "public",
-                    table: "comments",
-                    filter: `post_id=eq.${postId}`,
-                },
-                () => {
-                    fetchComments();
-                }
-            )
-            .subscribe();
+            // Subscribe to real-time comments
+            const channel = supabase
+                .channel(`comments-${postId}`)
+                .on(
+                    "postgres_changes",
+                    {
+                        event: "*",
+                        schema: "public",
+                        table: "comments",
+                        filter: `post_id=eq.${postId}`,
+                    },
+                    () => {
+                        fetchComments();
+                    }
+                )
+                .subscribe();
 
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [postId]);
+            return () => {
+                supabase.removeChannel(channel);
+            };
+        }
+    }, [postId, inView, hasLoaded]);
 
     const [isFetching, setIsFetching] = useState(true);
 
@@ -147,7 +157,7 @@ export const CommentSection = ({ postId, postAuthorId, currentUser }: CommentSec
     }, [toast]);
 
     return (
-        <div className="space-y-4">
+        <div ref={ref} className="space-y-4">
             {/* Comments List */}
             {comments.length > 0 && (
                 <div className="space-y-3 max-h-96 overflow-y-auto">

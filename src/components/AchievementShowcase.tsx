@@ -59,6 +59,8 @@ export const AchievementShowcase = ({ userId }: { userId?: string }) => {
     const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAllBadges, setShowAllBadges] = useState(false);
+    const [currentUserRank, setCurrentUserRank] = useState<{ rank: number, user: LeaderboardUser } | null>(null);
+    const [currentViewerId, setCurrentViewerId] = useState<string | null>(null);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -73,6 +75,8 @@ export const AchievementShowcase = ({ userId }: { userId?: string }) => {
                 }
 
                 if (!targetUserId) return;
+
+                setCurrentViewerId(targetUserId);
 
                 // 1. Fetch all available achievements
                 const { data: allAchievements, error: achievementsError } = await supabase
@@ -109,6 +113,35 @@ export const AchievementShowcase = ({ userId }: { userId?: string }) => {
                 if (leaderboardError) throw leaderboardError;
 
                 setLeaderboard(topUsers || []);
+
+                // 4. If current user is not in top 10, fetch their rank and data
+                const isUserInTop10 = topUsers?.some(u => u.id === targetUserId);
+
+                if (!isUserInTop10 && targetUserId) {
+                    const { data: userData } = await supabase
+                        .from('profiles')
+                        .select('id, username, avatar_url, xp, level')
+                        .eq('id', targetUserId)
+                        .single();
+
+                    if (userData) {
+                        // Calculate rank: count of users with more XP + 1
+                        const { count } = await supabase
+                            .from('profiles')
+                            .select('id', { count: 'exact', head: true })
+                            .gt('xp', userData.xp || 0);
+
+                        setCurrentUserRank({
+                            rank: (count || 0) + 1,
+                            user: userData
+                        });
+                    }
+                } else if (isUserInTop10 && targetUserId) {
+                    const rank = topUsers?.findIndex(u => u.id === targetUserId) + 1;
+                    // We don't necessarily need to store it if we highlight them in the list, 
+                    // but good for consistency/debugging
+                    // setCurrentUserRank({ rank, user: topUsers.find(u => u.id === targetUserId)! });
+                }
 
             } catch (error) {
                 console.error("Error fetching gamification data:", error);
@@ -436,8 +469,12 @@ export const AchievementShowcase = ({ userId }: { userId?: string }) => {
                                 ))
                             ) : leaderboard.map((user, index) => (
                                 <motion.div key={user.id} variants={itemVariants}>
-                                    <div className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
-                                        <div className="flex-shrink-0 w-8 text-center font-bold text-lg text-muted-foreground">
+                                    <div className={`flex items-center gap-4 p-4 rounded-xl border transition-colors ${user.id === currentViewerId
+                                            ? 'bg-primary/10 border-primary/50'
+                                            : 'bg-white/5 border-white/10 hover:bg-white/10'
+                                        }`}>
+                                        <div className={`flex-shrink-0 w-8 text-center font-bold text-lg ${user.id === currentViewerId ? 'text-primary' : 'text-muted-foreground'
+                                            }`}>
                                             {index + 1 === 1 ? '🥇' : index + 1 === 2 ? '🥈' : index + 1 === 3 ? '🥉' : `#${index + 1}`}
                                         </div>
 
@@ -448,7 +485,11 @@ export const AchievementShowcase = ({ userId }: { userId?: string }) => {
 
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
-                                                <h3 className="font-semibold truncate">{user.username || 'Anonymous'}</h3>
+                                                <h3 className={`font-semibold truncate ${user.id === currentViewerId ? 'text-primary' : ''
+                                                    }`}>
+                                                    {user.username || 'Anonymous'}
+                                                    {user.id === currentViewerId && " (You)"}
+                                                </h3>
                                                 {index === 0 && <Crown className="w-4 h-4 text-yellow-500 fill-yellow-500" />}
                                             </div>
                                             <p className="text-xs text-muted-foreground">Level {user.level || 1}</p>
@@ -461,6 +502,38 @@ export const AchievementShowcase = ({ userId }: { userId?: string }) => {
                                     </div>
                                 </motion.div>
                             ))}
+
+                            {/* Show current user rank if not in top 10 */}
+                            {!loading && currentUserRank && !leaderboard.some(u => u.id === currentUserRank.user.id) && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="pt-2 border-t border-white/10"
+                                >
+                                    <div className="flex items-center gap-4 p-4 rounded-xl bg-primary/10 border border-primary/20">
+                                        <div className="flex-shrink-0 w-8 text-center font-bold text-lg text-primary">
+                                            #{currentUserRank.rank}
+                                        </div>
+
+                                        <Avatar className="w-12 h-12 border-2 border-primary">
+                                            <AvatarImage src={currentUserRank.user.avatar_url || undefined} />
+                                            <AvatarFallback>{currentUserRank.user.username ? currentUserRank.user.username[0] : 'U'}</AvatarFallback>
+                                        </Avatar>
+
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="font-semibold truncate text-primary">You</h3>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">Level {currentUserRank.user.level || 1}</p>
+                                        </div>
+
+                                        <div className="text-right">
+                                            <div className="font-bold text-primary">{(currentUserRank.user.xp || 0).toLocaleString()}</div>
+                                            <div className="text-xs text-muted-foreground">XP</div>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
                         </motion.div>
                     )}
                 </AnimatePresence>

@@ -97,6 +97,8 @@ const Feed = () => {
             </>
           )}
         </div>
+
+        {aiMentor}
       </main>
 
       <BottomNav />

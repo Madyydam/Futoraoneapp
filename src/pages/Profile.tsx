@@ -529,6 +529,7 @@ const Profile = () => {
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         profile={profile}
+        userId={user?.id || ""}
         onUpdate={refreshProfile}
       />
 

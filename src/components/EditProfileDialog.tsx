@@ -30,10 +30,11 @@ interface EditProfileDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   profile: Profile | null;
+  userId: string;
   onUpdate: () => void;
 }
 
-export const EditProfileDialog = ({ open, onOpenChange, profile, onUpdate }: EditProfileDialogProps) => {
+export const EditProfileDialog = ({ open, onOpenChange, profile, userId, onUpdate }: EditProfileDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     full_name: profile?.full_name || "",
@@ -74,7 +75,7 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, onUpdate }: Edi
         }
 
         const fileExt = compressedFile.name.split('.').pop();
-        const fileName = `${profile.id}/avatar.${fileExt}`;
+        const fileName = `${userId}/avatar.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
           .from('post-images')
@@ -86,7 +87,6 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, onUpdate }: Edi
           .from('post-images')
           .getPublicUrl(fileName);
 
-        avatarUrl = publicUrl;
         avatarUrl = publicUrl;
       }
 
@@ -108,7 +108,7 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, onUpdate }: Edi
         }
 
         const fileExt = compressedFile.name.split('.').pop();
-        const fileName = `${profile.id}/banner.${fileExt}`;
+        const fileName = `${userId}/banner.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
           .from('post-images')
@@ -125,7 +125,8 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, onUpdate }: Edi
 
       const { error } = await supabase
         .from('profiles')
-        .update({
+        .upsert({
+          id: userId,
           full_name: formData.full_name,
           username: formData.username,
           bio: formData.bio,
@@ -138,8 +139,7 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, onUpdate }: Edi
           avatar_url: avatarUrl,
           banner_url: bannerUrl,
           digest_mode: formData.digest_mode,
-        })
-        .eq('id', profile!.id);
+        });
 
       if (error) throw error;
 
