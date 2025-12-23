@@ -145,10 +145,10 @@ export const AchievementShowcase = ({ userId }: { userId?: string }) => {
                             user: userData
                         });
                     } else {
-                        // User is in top 3 or not found, show top 10
-                        displayedUsers = allUsers.slice(0, 10);
+                        // User is in top 3 or not found, show only top 3
+                        displayedUsers = allUsers.slice(0, 3);
 
-                        if (userRankNumber && userRankNumber <= 10) {
+                        if (userRankNumber && userRankNumber <= 3) {
                             setCurrentUserRank(null); // Already in the list
                         }
                     }

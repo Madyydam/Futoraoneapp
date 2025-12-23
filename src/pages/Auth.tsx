@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Camera, User, Mail, Lock, Loader2, Sparkles, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, User, Mail, Lock, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -16,8 +16,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { AvatarSelector } from "@/components/AvatarSelector";
+import { getRandomAvatar } from "@/utils/avatars";
 
 
 
@@ -29,8 +30,7 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
-  const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [selectedAvatar, setSelectedAvatar] = useState<string | null>(() => getRandomAvatar().url);
 
   const [loading, setLoading] = useState(false);
   const [showLoginErrorDialog, setShowLoginErrorDialog] = useState(false);
@@ -61,42 +61,12 @@ const Auth = () => {
     setIsLogin(searchParams.get("mode") === "login");
   }, [searchParams]);
 
-  const handlePhotoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setProfilePhoto(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+  // Auto-select random avatar on component mount for signup
+  useEffect(() => {
+    if (!isLogin && !selectedAvatar) {
+      setSelectedAvatar(getRandomAvatar().url);
     }
-  }, []);
-
-  const uploadProfilePhoto = useCallback(async (userId: string): Promise<string | null> => {
-    if (!profilePhoto) return null;
-
-    try {
-      const fileExt = profilePhoto.name.split('.').pop();
-      const fileName = `${userId}-${Math.random()}.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, profilePhoto);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-
-      return publicUrl;
-    } catch (error) {
-      console.error('Error uploading photo:', error);
-      return null;
-    }
-  }, [profilePhoto]);
+  }, [isLogin, selectedAvatar]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,18 +101,12 @@ const Auth = () => {
 
         if (error) throw error;
 
-        // Upload profile photo if provided
-        let avatarUrl = null;
-        if (data.user && profilePhoto) {
-          avatarUrl = await uploadProfilePhoto(data.user.id);
-
-          // Update profile with avatar URL
-          if (avatarUrl) {
-            await supabase
-              .from('profiles')
-              .update({ avatar_url: avatarUrl })
-              .eq('id', data.user.id);
-          }
+        // Set selected avatar to profile
+        if (data.user && selectedAvatar) {
+          await supabase
+            .from('profiles')
+            .update({ avatar_url: selectedAvatar })
+            .eq('id', data.user.id);
         }
 
         toast({
@@ -165,7 +129,7 @@ const Auth = () => {
     } finally {
       setLoading(false);
     }
-  }, [isLogin, email, password, fullName, username, profilePhoto, navigate, toast, uploadProfilePhoto]);
+  }, [isLogin, email, password, fullName, username, selectedAvatar, navigate, toast]);
 
   return (
     <div className="dark min-h-screen bg-background relative flex items-center justify-center p-4 overflow-hidden">
@@ -244,23 +208,13 @@ const Auth = () => {
                     exit={{ opacity: 0, height: 0 }}
                     className="space-y-5 overflow-hidden"
                   >
-                    {/* Profile Photo Upload */}
-                    <div className="flex justify-center mb-6">
-                      <div className="relative group cursor-pointer">
-                        <Avatar className="w-24 h-24 border-4 border-background shadow-xl">
-                          <AvatarImage src={photoPreview || undefined} />
-                          <AvatarFallback className="bg-secondary text-secondary-foreground">
-                            <User className="w-10 h-10" />
-                          </AvatarFallback>
-                        </Avatar>
-                        <label htmlFor="photo-upload" className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity rounded-full cursor-pointer">
-                          <Camera className="w-8 h-8" />
-                        </label>
-                        <input id="photo-upload" type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
-                        <div className="absolute bottom-0 right-0 bg-primary text-white p-1.5 rounded-full ring-4 ring-background">
-                          <Sparkles className="w-3 h-3" />
-                        </div>
-                      </div>
+                    {/* Avatar Selection */}
+                    <div className="mb-6">
+                      <h3 className="text-sm font-medium text-white mb-3 text-center">Choose Your Avatar</h3>
+                      <AvatarSelector
+                        selectedAvatar={selectedAvatar}
+                        onSelectAvatar={setSelectedAvatar}
+                      />
                     </div>
 
                     <div className="grid grid-cols-1 gap-5">

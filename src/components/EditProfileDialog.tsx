@@ -8,7 +8,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Upload } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import imageCompression from 'browser-image-compression';
+import { AvatarSelector } from "@/components/AvatarSelector";
 
 interface Profile {
   id: string;
@@ -49,6 +51,7 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, userId, onUpdat
     digest_mode: profile?.digest_mode || false,
   });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [selectedAvatar, setSelectedAvatar] = useState<string | null>(profile?.avatar_url || null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const { toast } = useToast();
 
@@ -59,7 +62,7 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, userId, onUpdat
     try {
       let avatarUrl = profile?.avatar_url;
 
-      // Upload avatar if changed
+      // Upload avatar file if changed
       if (avatarFile) {
         const options = {
           maxSizeMB: 0.5,
@@ -88,6 +91,9 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, userId, onUpdat
           .getPublicUrl(fileName);
 
         avatarUrl = publicUrl;
+      } else if (selectedAvatar && selectedAvatar !== profile?.avatar_url) {
+        // User selected a cartoon avatar
+        avatarUrl = selectedAvatar;
       }
 
       let bannerUrl = profile?.banner_url;
@@ -171,34 +177,56 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, userId, onUpdat
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Profile Picture</Label>
-              <div className="flex items-center gap-4">
-                <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-muted">
-                  {avatarFile ? (
-                    <img
-                      src={URL.createObjectURL(avatarFile)}
-                      alt="Avatar preview"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <img
-                      src={profile?.avatar_url || "/placeholder.svg"}
-                      alt="Current avatar"
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
-                    className="cursor-pointer"
+              <Tabs defaultValue="choose" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="choose">Choose Avatar</TabsTrigger>
+                  <TabsTrigger value="upload">Upload Photo</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="choose" className="space-y-3 pt-4">
+                  <AvatarSelector
+                    selectedAvatar={selectedAvatar}
+                    onSelectAvatar={(url) => {
+                      setSelectedAvatar(url);
+                      setAvatarFile(null); // Clear file upload if avatar selected
+                    }}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Recommended: Square image, max 2MB
-                  </p>
-                </div>
-              </div>
+                </TabsContent>
+
+                <TabsContent value="upload" className="space-y-3 pt-4">
+                  <div className="flex items-center gap-4">
+                    <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-muted">
+                      {avatarFile ? (
+                        <img
+                          src={URL.createObjectURL(avatarFile)}
+                          alt="Avatar preview"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <img
+                          src={profile?.avatar_url || "/placeholder.svg"}
+                          alt="Current avatar"
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          setAvatarFile(e.target.files?.[0] || null);
+                          setSelectedAvatar(null); // Clear avatar selection if file uploaded
+                        }}
+                        className="cursor-pointer"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Recommended: Square image, max 2MB
+                      </p>
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
 
             <div className="space-y-2">
