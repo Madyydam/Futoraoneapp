@@ -175,8 +175,14 @@ const TechMatch = () => {
             }
         };
 
+        const getCurrentUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            setCurrentUser(user);
+        };
+
         if (activeTab === 'find-devs') {
             fetchProfiles();
+            getCurrentUser();
         }
     }, [activeTab, selectedSkills, toast]); // Re-run when skills change
 

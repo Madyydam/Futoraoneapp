@@ -2,12 +2,13 @@ import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
-import { Trophy, Crown, TrendingUp } from "lucide-react";
+import { Trophy, Crown, TrendingUp, ChevronRight, ExternalLink } from "lucide-react";
 import { CartoonLoader } from "@/components/CartoonLoader";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { subDays, isAfter, parseISO } from "date-fns";
+import { useNavigate } from "react-router-dom";
 
 interface LeaderboardEntry {
     user_id: string;
@@ -19,7 +20,13 @@ interface LeaderboardEntry {
     last_active_at?: string;
 }
 
-const GameLeaderboard = ({ currentUserId }: { currentUserId?: string }) => {
+interface GameLeaderboardProps {
+    currentUserId?: string;
+    isWidget?: boolean;
+}
+
+const GameLeaderboard = ({ currentUserId, isWidget = true }: GameLeaderboardProps) => {
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
     const [timeFilter, setTimeFilter] = useState<"all" | "week" | "month">("all");
@@ -27,10 +34,28 @@ const GameLeaderboard = ({ currentUserId }: { currentUserId?: string }) => {
 
     useEffect(() => {
         fetchLeaderboard();
+
+        // Real-time subscription for live updates
+        const channel = supabase
+            .channel('leaderboard-updates')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'user_game_stats' },
+                (payload) => {
+                    console.log('Leaderboard updated!', payload);
+                    fetchLeaderboard();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
 
     const fetchLeaderboard = async () => {
-        setLoading(true);
+        // Only set loading on first load to avoid flickering on updates
+        if (leaderboard.length === 0) setLoading(true);
 
         // Note: This RPC now returns last_active_at
         const { data, error } = await supabase.rpc('get_overall_leaderboard');
@@ -107,12 +132,43 @@ const GameLeaderboard = ({ currentUserId }: { currentUserId?: string }) => {
         </div>
     );
 
+    // Filter the list below podium
+    const listItems = useMemo(() => {
+        const fullList = filteredLeaderboard.slice(3); // Everyone after rank 3
+
+        if (!isWidget) return fullList; // Show everyone in full mode
+
+        // Strict Widget filtering: Show only Rank-1, Rank, Rank+1
+        if (!currentUserId || !userRank) {
+            // If user not ranked or not logged in, just show next 3
+            return fullList.slice(0, 3);
+        }
+
+        // Check if user is already in podium (Rank 1, 2, 3)
+        if (userRank <= 3) {
+            // User is in podium, show next 3 top players in list for context
+            return fullList.slice(0, 3);
+        }
+
+        // User is Rank 4 or greater.
+        return fullList.filter((_, idx) => {
+            const actualRank = idx + 4; // Because we slice(3)
+
+            // Show one above (-1), current (0), one below (+1)
+            // Math.abs(rank - userRank) <= 1
+            return Math.abs(actualRank - userRank) <= 1;
+        });
+
+    }, [filteredLeaderboard, isWidget, currentUserId, userRank]);
+
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1">
                     <h2 className="text-2xl font-bold flex items-center gap-2">
-                        <Trophy className="text-primary fill-current" /> Global Game Leaderboard
+                        <Trophy className="text-primary fill-current" />
+                        {isWidget ? "Global Leaderboard" : "Global Leaderboard Rankings"}
                     </h2>
                     <p className="text-muted-foreground text-sm">Top performers across the community</p>
                 </div>
@@ -153,24 +209,13 @@ const GameLeaderboard = ({ currentUserId }: { currentUserId?: string }) => {
                                 </div>
                             )}
 
-                            {/* List for Rest (Optimized for Context) */}
-                            <div className="px-4 pb-4 space-y-2 max-h-[400px] overflow-y-auto mt-4">
-                                {filteredLeaderboard.slice(3).filter((_, idx) => {
-                                    // Logic to show: 
-                                    // 1. If user is in top 6, show normally (simple continuity)
-                                    // 2. If user is further down, show user + 1 above + 1 below
-                                    // 3. Always show very bottom few if desired? No, just context.
-
-                                    const rank = idx + 4; // Because we sliced 3, so idx 0 is Rank 4
-
-                                    if (!currentUserId || !userRank) return true; // Show all if not logged in or unranked
-
-                                    if (userRank <= 6) return true; // Show everyone if user is near top
-
-                                    // Check if this entry is within +/- 1 of userRank
-                                    return Math.abs(rank - userRank) <= 1;
-                                }).map((entry) => {
-                                    // Find original index to get true rank
+                            {/* List for Rest */}
+                            <div className={cn(
+                                "px-4 pb-4 space-y-2 mt-4",
+                                !isWidget && "max-h-[600px] overflow-y-auto" // Scroll only in full view if needed, widget is short
+                            )}>
+                                {listItems.map((entry) => {
+                                    // Find true rank
                                     const trueRank = filteredLeaderboard.findIndex(p => p.user_id === entry.user_id) + 1;
                                     const isCurrentUser = entry.user_id === currentUserId;
 
@@ -209,19 +254,26 @@ const GameLeaderboard = ({ currentUserId }: { currentUserId?: string }) => {
                                     )
                                 })}
 
-                                {/* Show ellipsis if there's a gap */}
-                                {userRank && userRank > 6 && filteredLeaderboard.length > 6 && (
-                                    <div className="text-center py-2 text-xs text-muted-foreground">...</div>
+                                {isWidget && (
+                                    <div className="pt-4 flex justify-center">
+                                        <Button
+                                            variant="outline"
+                                            className="w-full gap-2 border-primary/20 hover:bg-primary/10"
+                                            onClick={() => window.open('/leaderboard', '_blank')}
+                                        >
+                                            See Full Leaderboard <ExternalLink className="w-4 h-4" />
+                                        </Button>
+                                    </div>
                                 )}
                             </div>
 
-                            {/* Fixed User Rank Footer */}
-                            {currentUserId && userRank && (
+                            {/* Fixed User Rank Footer (Only show in Widget mode for quick context if user is far down) */}
+                            {currentUserId && userRank && isWidget && userRank > 3 && (
                                 <div className="sticky bottom-0 p-4 bg-background/80 backdrop-blur-md border-t border-border flex items-center gap-4">
                                     <span className="w-8 text-center font-bold text-primary">{userRank}</span>
                                     <div className="flex-1 font-semibold text-sm">Your Global Rank</div>
-                                    <Button variant="ghost" size="sm" className="gap-2">
-                                        View Stats <TrendingUp className="w-4 h-4" />
+                                    <Button onClick={() => window.open('/leaderboard', '_blank')} variant="ghost" size="sm" className="gap-2">
+                                        View All <ChevronRight className="w-4 h-4" />
                                     </Button>
                                 </div>
                             )}

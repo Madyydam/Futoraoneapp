@@ -75,6 +75,8 @@ const NumberMerge = lazy(() => import("./pages/games/NumberMerge"));
 const PatternPro = lazy(() => import("./pages/games/PatternPro"));
 const SpeedMath = lazy(() => import("./pages/games/SpeedMath"));
 const Settings = lazy(() => import("./pages/Settings"));
+const LeaderboardFull = lazy(() => import("./pages/LeaderboardFull"));
+const HallOfFameFull = lazy(() => import("./pages/HallOfFameFull"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -162,6 +164,9 @@ const App = () => {
                   <Route path="/games/number-merge" element={<NumberMerge />} />
                   <Route path="/games/pattern-pro" element={<PatternPro />} />
                   <Route path="/games/speed-math" element={<SpeedMath />} />
+
+                  <Route path="/leaderboard" element={<LeaderboardFull />} />
+                  <Route path="/hall-of-fame" element={<HallOfFameFull />} />
 
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />

@@ -103,45 +103,58 @@ export const AchievementShowcase = ({ userId }: { userId?: string }) => {
 
                 setAchievements(mergedAchievements);
 
-                // 3. Fetch Leaderboard (Top 10 users by XP)
-                const { data: topUsers, error: leaderboardError } = await supabase
+                // 3. Fetch ALL users ordered by XP
+                const { data: allUsers, error: leaderboardError } = await supabase
                     .from('profiles')
                     .select('id, username, avatar_url, xp, level')
                     .order('xp', { ascending: false })
-                    .limit(10);
+                    .limit(100); // Get top 100 for accurate ranking
 
                 if (leaderboardError) throw leaderboardError;
 
-                setLeaderboard(topUsers || []);
+                // Find current user's rank in the full list
+                const userIndex = allUsers?.findIndex(u => u.id === targetUserId) ?? -1;
+                const userRankNumber = userIndex !== -1 ? userIndex + 1 : null;
 
-                // 4. If current user is not in top 10, fetch their rank and data
-                const isUserInTop10 = topUsers?.some(u => u.id === targetUserId);
+                // Determine which users to show
+                let displayedUsers: LeaderboardUser[] = [];
 
-                if (!isUserInTop10 && targetUserId) {
-                    const { data: userData } = await supabase
-                        .from('profiles')
-                        .select('id, username, avatar_url, xp, level')
-                        .eq('id', targetUserId)
-                        .single();
+                if (allUsers && allUsers.length > 0) {
+                    // Always include top 3
+                    const top3 = allUsers.slice(0, 3);
 
-                    if (userData) {
-                        // Calculate rank: count of users with more XP + 1
-                        const { count } = await supabase
-                            .from('profiles')
-                            .select('id', { count: 'exact', head: true })
-                            .gt('xp', userData.xp || 0);
+                    if (userRankNumber && userRankNumber > 3) {
+                        // User is not in top 3, show neighbors (rank-1, rank, rank+1)
+                        const start = Math.max(0, userIndex - 1);
+                        const end = Math.min(allUsers.length, userIndex + 2);
+                        const neighbors = allUsers.slice(start, end);
 
+                        // Combine top 3 + neighbors (removing duplicates)
+                        const combined = [...top3];
+                        neighbors.forEach(neighbor => {
+                            if (!combined.find(u => u.id === neighbor.id)) {
+                                combined.push(neighbor);
+                            }
+                        });
+                        displayedUsers = combined;
+
+                        // Set current user rank for display
+                        const userData = allUsers[userIndex];
                         setCurrentUserRank({
-                            rank: (count || 0) + 1,
+                            rank: userRankNumber,
                             user: userData
                         });
+                    } else {
+                        // User is in top 3 or not found, show top 10
+                        displayedUsers = allUsers.slice(0, 10);
+
+                        if (userRankNumber && userRankNumber <= 10) {
+                            setCurrentUserRank(null); // Already in the list
+                        }
                     }
-                } else if (isUserInTop10 && targetUserId) {
-                    const rank = topUsers?.findIndex(u => u.id === targetUserId) + 1;
-                    // We don't necessarily need to store it if we highlight them in the list, 
-                    // but good for consistency/debugging
-                    // setCurrentUserRank({ rank, user: topUsers.find(u => u.id === targetUserId)! });
                 }
+
+                setLeaderboard(displayedUsers);
 
             } catch (error) {
                 console.error("Error fetching gamification data:", error);
@@ -156,6 +169,23 @@ export const AchievementShowcase = ({ userId }: { userId?: string }) => {
         };
 
         fetchData();
+
+        // Real-time subscription for XP updates
+        const channel = supabase
+            .channel('xp-updates-achievement')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'profiles' },
+                (payload) => {
+                    console.log('Profile XP updated!', payload);
+                    fetchData(); // Refetch leaderboard
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [userId, toast]);
 
     const handleShare = async () => {
@@ -470,8 +500,8 @@ export const AchievementShowcase = ({ userId }: { userId?: string }) => {
                             ) : leaderboard.map((user, index) => (
                                 <motion.div key={user.id} variants={itemVariants}>
                                     <div className={`flex items-center gap-4 p-4 rounded-xl border transition-colors ${user.id === currentViewerId
-                                            ? 'bg-primary/10 border-primary/50'
-                                            : 'bg-white/5 border-white/10 hover:bg-white/10'
+                                        ? 'bg-primary/10 border-primary/50'
+                                        : 'bg-white/5 border-white/10 hover:bg-white/10'
                                         }`}>
                                         <div className={`flex-shrink-0 w-8 text-center font-bold text-lg ${user.id === currentViewerId ? 'text-primary' : 'text-muted-foreground'
                                             }`}>
@@ -503,7 +533,25 @@ export const AchievementShowcase = ({ userId }: { userId?: string }) => {
                                 </motion.div>
                             ))}
 
-                            {/* Show current user rank if not in top 10 */}
+                            {/* See More Button */}
+                            {!loading && leaderboard.length > 0 && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="flex justify-center pt-2"
+                                >
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="border-primary/20 hover:bg-primary/10 text-primary"
+                                        onClick={() => window.open('/hall-of-fame', '_blank')}
+                                    >
+                                        See Full Hall of Fame
+                                    </Button>
+                                </motion.div>
+                            )}
+
+                            {/* Show current user rank if not in displayed list */}
                             {!loading && currentUserRank && !leaderboard.some(u => u.id === currentUserRank.user.id) && (
                                 <motion.div
                                     initial={{ opacity: 0, y: 20 }}
