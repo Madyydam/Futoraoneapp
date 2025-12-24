@@ -77,13 +77,18 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, userId, onUpdat
         }
 
         const fileExt = compressedFile.name.split('.').pop();
-        const fileName = `${userId}/avatar.${fileExt}`;
+        // Use a unique name to avoid RLS update issues and force cache refresh
+        const fileName = `${userId}/avatar_${Date.now()}.${fileExt}`;
 
+        console.log('Uploading avatar to:', fileName);
         const { error: uploadError } = await supabase.storage
           .from('post-images')
-          .upload(fileName, compressedFile, { upsert: true });
+          .upload(fileName, compressedFile);
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error('Avatar upload error:', uploadError);
+          throw new Error(`Avatar upload failed: ${uploadError.message}`);
+        }
 
         const { data: { publicUrl } } = supabase.storage
           .from('post-images')
@@ -110,13 +115,18 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, userId, onUpdat
         }
 
         const fileExt = compressedFile.name.split('.').pop();
-        const fileName = `${userId}/banner.${fileExt}`;
+        // Use a unique name to avoid RLS update issues and force cache refresh
+        const fileName = `${userId}/banner_${Date.now()}.${fileExt}`;
 
+        console.log('Uploading banner to:', fileName);
         const { error: uploadError } = await supabase.storage
           .from('post-images')
-          .upload(fileName, compressedFile, { upsert: true });
+          .upload(fileName, compressedFile);
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error('Banner upload error:', uploadError);
+          throw new Error(`Banner upload failed: ${uploadError.message}`);
+        }
 
         const { data: { publicUrl } } = supabase.storage
           .from('post-images')
@@ -125,6 +135,7 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, userId, onUpdat
         bannerUrl = publicUrl;
       }
 
+      console.log('Updating profile with data:', { avatarUrl, bannerUrl });
       const { error } = await supabase
         .from('profiles')
         .upsert({
@@ -214,42 +225,42 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, userId, onUpdat
                 </div>
               </div>
             </div>
-  <div className="space-y-2">
-    <Label>Banner Image</Label>
-    <div className="space-y-3">
-      <div className="relative w-full h-32 rounded-lg overflow-hidden border-2 border-muted bg-muted/30">
-        {bannerFile ? (
-          <img
-            src={URL.createObjectURL(bannerFile)}
-            alt="Banner preview"
-            className="w-full h-full object-cover"
-          />
-        ) : profile?.banner_url ? (
-          <img
-            src={profile.banner_url}
-            alt="Current banner"
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-            <span className="text-sm">No banner set</span>
-          </div>
-        )}
-      </div>
-      <div className="flex items-center gap-2">
-        <Input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setBannerFile(e.target.files?.[0] || null)}
-          className="cursor-pointer"
-        />
-        <Upload className="w-5 h-5 text-muted-foreground" />
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Recommended: 1500x500px, max 5MB
-      </p>
-    </div>
-  </div>
+            <div className="space-y-2">
+              <Label>Banner Image</Label>
+              <div className="space-y-3">
+                <div className="relative w-full h-32 rounded-lg overflow-hidden border-2 border-muted bg-muted/30">
+                  {bannerFile ? (
+                    <img
+                      src={URL.createObjectURL(bannerFile)}
+                      alt="Banner preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : profile?.banner_url ? (
+                    <img
+                      src={profile.banner_url}
+                      alt="Current banner"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                      <span className="text-sm">No banner set</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setBannerFile(e.target.files?.[0] || null)}
+                    className="cursor-pointer"
+                  />
+                  <Upload className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Recommended: 1500x500px, max 5MB
+                </p>
+              </div>
+            </div>
           </div >
 
           <div className="space-y-2">

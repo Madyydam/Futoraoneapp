@@ -13,6 +13,7 @@ import ScrollToTop from "@/components/ScrollToTop";
 import { CartoonLoader } from "@/components/CartoonLoader";
 import { AchievementListener } from "@/components/AchievementListener";
 import { UserPresenceProvider } from "@/contexts/UserPresenceContext";
+import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
 
 // Core pages - Eager loaded for speed
 import Index from "./pages/Index";
@@ -107,74 +108,76 @@ const App = () => {
           <Sonner />
           <AchievementListener />
           <UserPresenceProvider>
-            <BrowserRouter>
-              <ScrollToTop />
-              <Suspense fallback={<CartoonLoader />}>
-                <Routes>
-                  <Route path="/" element={<Welcome />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/feed" element={<Feed />} />
-                  <Route path="/create-post" element={<CreatePost />} />
-                  <Route path="/explore" element={<Explore />} />
-                  <Route path="/notifications" element={<Notifications />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/user/:userId" element={<UserProfile />} />
-                  <Route path="/projects" element={<Projects />} />
-                  <Route path="/ai-roadmap" element={<AIRoadmap />} />
-                  <Route path="/ai-tools" element={<AIPage />} />
-                  <Route path="/terms" element={<Terms />} />
-                  <Route path="/privacy" element={<Privacy />} />
-                  <Route path="/about" element={<About />} />
-                  <Route path="/category/:category" element={<CategoryPage />} />
-                  <Route path="/topic/:topic" element={<TopicPage />} />
-                  <Route path="/project/:projectId" element={<ProjectDetails />} />
-                  <Route path="/search" element={<SearchResults />} />
-                  <Route path="/messages" element={<Messages />} />
-                  <Route path="/people" element={<AllPeople />} />
-                  <Route path="/chat/:conversationId" element={<Chat />} />
-                  <Route path="/create-story" element={<CreateStory />} />
-                  <Route path="/story/:userId" element={<StoryView />} />
-                  <Route path="/profile-views" element={<ProfileViews />} />
-                  <Route path="/project-ideas" element={<ProjectIdeas />} />
-                  <Route path="/admin" element={<AdminDashboard />} />
-                  <Route path="/admin/users" element={<AdminUsers />} />
-                  <Route path="/admin/moderation" element={<AdminModeration />} />
-                  <Route path="/admin/analytics" element={<AdminAnalytics />} />
-                  <Route path="/admin/finance" element={<AdminFinance />} />
-                  <Route path="/admin/settings" element={<AdminSettings />} />
-                  <Route path="/ai-enhancer" element={<AIEnhancer />} />
+            <GlobalErrorBoundary>
+              <BrowserRouter>
+                <ScrollToTop />
+                <Suspense fallback={<CartoonLoader />}>
+                  <Routes>
+                    <Route path="/" element={<Welcome />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/feed" element={<Feed />} />
+                    <Route path="/create-post" element={<CreatePost />} />
+                    <Route path="/explore" element={<Explore />} />
+                    <Route path="/notifications" element={<Notifications />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/user/:userId" element={<UserProfile />} />
+                    <Route path="/projects" element={<Projects />} />
+                    <Route path="/ai-roadmap" element={<AIRoadmap />} />
+                    <Route path="/ai-tools" element={<AIPage />} />
+                    <Route path="/terms" element={<Terms />} />
+                    <Route path="/privacy" element={<Privacy />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/category/:category" element={<CategoryPage />} />
+                    <Route path="/topic/:topic" element={<TopicPage />} />
+                    <Route path="/project/:projectId" element={<ProjectDetails />} />
+                    <Route path="/search" element={<SearchResults />} />
+                    <Route path="/messages" element={<Messages />} />
+                    <Route path="/people" element={<AllPeople />} />
+                    <Route path="/chat/:conversationId" element={<Chat />} />
+                    <Route path="/create-story" element={<CreateStory />} />
+                    <Route path="/story/:userId" element={<StoryView />} />
+                    <Route path="/profile-views" element={<ProfileViews />} />
+                    <Route path="/project-ideas" element={<ProjectIdeas />} />
+                    <Route path="/admin" element={<AdminDashboard />} />
+                    <Route path="/admin/users" element={<AdminUsers />} />
+                    <Route path="/admin/moderation" element={<AdminModeration />} />
+                    <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                    <Route path="/admin/finance" element={<AdminFinance />} />
+                    <Route path="/admin/settings" element={<AdminSettings />} />
+                    <Route path="/ai-enhancer" element={<AIEnhancer />} />
 
-                  <Route path="/founders-corner" element={<FoundersCorner />} />
-                  <Route path="/gig-marketplace" element={<GigMarketplace />} />
-                  <Route path="/applications" element={<ApplicationsDashboard />} />
-                  <Route path="/tech-reels" element={<TechReels />} />
-                  <Route path="/tech-match" element={<TechMatch />} />
-                  <Route path="/messages/group/:groupId" element={<GroupChat />} />
-                  <Route path="/post/:postId" element={<PostDetails />} />
+                    <Route path="/founders-corner" element={<FoundersCorner />} />
+                    <Route path="/gig-marketplace" element={<GigMarketplace />} />
+                    <Route path="/applications" element={<ApplicationsDashboard />} />
+                    <Route path="/tech-reels" element={<TechReels />} />
+                    <Route path="/tech-match" element={<TechMatch />} />
+                    <Route path="/messages/group/:groupId" element={<GroupChat />} />
+                    <Route path="/post/:postId" element={<PostDetails />} />
 
-                  {/* Games */}
-                  <Route path="/games" element={<Games />} />
-                  <Route path="/games/dots-and-boxes" element={<DotsAndBoxes />} />
-                  <Route path="/games/tic-tac-toe" element={<TicTacToe />} />
-                  <Route path="/games/memory-match" element={<MemoryMatch />} />
-                  <Route path="/games/rock-paper-scissors" element={<RockPaperScissors />} />
-                  <Route path="/games/connect-four" element={<ConnectFour />} />
-                  <Route path="/games/reflex-master" element={<ReflexMaster />} />
-                  <Route path="/games/word-blitz" element={<WordBlitz />} />
-                  <Route path="/games/number-merge" element={<NumberMerge />} />
-                  <Route path="/games/pattern-pro" element={<PatternPro />} />
-                  <Route path="/games/speed-math" element={<SpeedMath />} />
+                    {/* Games */}
+                    <Route path="/games" element={<Games />} />
+                    <Route path="/games/dots-and-boxes" element={<DotsAndBoxes />} />
+                    <Route path="/games/tic-tac-toe" element={<TicTacToe />} />
+                    <Route path="/games/memory-match" element={<MemoryMatch />} />
+                    <Route path="/games/rock-paper-scissors" element={<RockPaperScissors />} />
+                    <Route path="/games/connect-four" element={<ConnectFour />} />
+                    <Route path="/games/reflex-master" element={<ReflexMaster />} />
+                    <Route path="/games/word-blitz" element={<WordBlitz />} />
+                    <Route path="/games/number-merge" element={<NumberMerge />} />
+                    <Route path="/games/pattern-pro" element={<PatternPro />} />
+                    <Route path="/games/speed-math" element={<SpeedMath />} />
 
-                  <Route path="/leaderboard" element={<LeaderboardFull />} />
-                  <Route path="/hall-of-fame" element={<HallOfFameFull />} />
-                  <Route path="/select-avatar" element={<SelectAvatar />} />
+                    <Route path="/leaderboard" element={<LeaderboardFull />} />
+                    <Route path="/hall-of-fame" element={<HallOfFameFull />} />
+                    <Route path="/select-avatar" element={<SelectAvatar />} />
 
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </Suspense>
-            </BrowserRouter>
+                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
+              </BrowserRouter>
+            </GlobalErrorBoundary>
           </UserPresenceProvider>
         </TooltipProvider>
       </ThemeProvider>

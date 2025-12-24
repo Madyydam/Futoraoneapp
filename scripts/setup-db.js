@@ -37,31 +37,29 @@ const POOLER_HOSTS = [
     "aws-0-eu-west-2.pooler.supabase.com" // London
 ];
 
-const DB_PASS = "Msd%407821";
+const DB_PASS = "msd@7821"; // The actual password
 const PROJECT_ID = "sbzsgeokspmkewrmuqgi";
+const DIRECT_HOST = "db.sbzsgeokspmkewrmuqgi.supabase.co";
 
 async function run() {
     let client = null;
 
-    // 1. Try to connect to correct region
-    for (const host of POOLER_HOSTS) {
-        const connStr = `postgres://postgres.${PROJECT_ID}:${DB_PASS}@${host}:6543/postgres`;
-        console.log(`🔌 Trying connection to ${host}...`);
+    // Direct connection string with user-provided details
+    const connStr = `postgres://postgres:${encodeURIComponent(DB_PASS)}@${DIRECT_HOST}:5432/postgres`;
+    console.log(`🔌 Trying direct connection to ${DIRECT_HOST}...`);
 
-        try {
-            const tempClient = new Client({
-                connectionString: connStr,
-                ssl: { rejectUnauthorized: false },
-                connectionTimeoutMillis: 5000 // 5s timeout
-            });
-            await tempClient.connect();
-            console.log(`✅ Connected successfully to ${host}!`);
-            client = tempClient;
-            break; // Found it!
-        } catch (e) {
-            console.log(`   ❌ Failed: ${e.message}`);
-            // Continue to next
-        }
+    try {
+        const tempClient = new Client({
+            connectionString: connStr,
+            ssl: { rejectUnauthorized: false },
+            connectionTimeoutMillis: 10000 // 10s timeout
+        });
+        await tempClient.connect();
+        console.log(`✅ Connected successfully!`);
+        client = tempClient;
+    } catch (e) {
+        console.log(`   ❌ Direct connection failed: ${e.message}`);
+        // fallback to pooler if needed but host from user is direct
     }
 
     if (!client) {
