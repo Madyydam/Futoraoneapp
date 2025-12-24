@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -70,16 +70,16 @@ interface SocialLinkButtonProps {
   onEditProfile: () => void;
 }
 
-const SocialLinkButton: React.FC<SocialLinkButtonProps> = ({
+const SocialLinkButton = memo(({
   url,
   icon,
   label,
   isOwnProfile,
   onEditProfile,
-}) => {
+}: SocialLinkButtonProps) => {
   const { toast } = useToast();
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
 
     if (url) {
@@ -103,19 +103,21 @@ const SocialLinkButton: React.FC<SocialLinkButtonProps> = ({
         });
       }
     }
-  };
+  }, [url, label, isOwnProfile, onEditProfile, toast]);
 
   return (
     <Button
       variant="ghost"
       size="sm"
-      className={`text-foreground ${!url ? 'opacity-50' : ''}`}
+      className={`text-foreground hover:bg-primary/10 transition-colors ${!url ? 'opacity-50' : ''}`}
       onClick={handleClick}
     >
       {icon}
     </Button>
   );
-};
+});
+
+SocialLinkButton.displayName = "SocialLinkButton";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -198,16 +200,16 @@ const Profile = () => {
     fetchUserData();
   }, [navigate]);
 
-  const fetchFollowerCounts = useCallback(async (userId: string) => {
+  const fetchFollowerCounts = useCallback(async (uid: string) => {
     const { count: followers } = await supabase
       .from("follows")
       .select("*", { count: "exact", head: true })
-      .eq("following_id", userId);
+      .eq("following_id", uid);
 
     const { count: following } = await supabase
       .from("follows")
       .select("*", { count: "exact", head: true })
-      .eq("follower_id", userId);
+      .eq("follower_id", uid);
 
     setFollowerCount(followers || 0);
     setFollowingCount(following || 0);

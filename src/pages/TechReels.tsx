@@ -56,33 +56,29 @@ const MOCK_REELS: Reel[] = [
 ];
 
 // Component to handle individual reel visibility
-const ReelWrapper = memo(({ reel, index, currentActiveIndex, isMuted, shouldPreload = false }: {
+const ReelWrapper = memo(({ reel, index, onInView, isMuted, shouldPreload = false }: {
     reel: Reel;
     index: number;
-    currentActiveIndex: React.MutableRefObject<number>; // Pass ref for active index
+    onInView: (index: number) => void;
     isMuted: boolean;
     shouldPreload?: boolean;
 }) => {
     const { ref, inView } = useInView({
-        threshold: 0.75, // Trigger when 75% visible
+        threshold: 0.75,
         triggerOnce: false,
     });
 
-    // Determine if this reel is the currently active one based on inView and the global active index
-    const isActive = inView && index === currentActiveIndex.current;
-
-    // Update the global active index when this reel comes into view
     useEffect(() => {
         if (inView) {
-            currentActiveIndex.current = index;
+            onInView(index);
         }
-    }, [inView, index, currentActiveIndex]);
+    }, [inView, index, onInView]);
 
     return (
         <div ref={ref} className="h-screen snap-start snap-always flex items-center justify-center relative">
             <ReelPlayer
                 reel={reel}
-                isActive={isActive}
+                isActive={inView}
                 isMuted={isMuted}
                 shouldPreload={shouldPreload}
             />
@@ -96,28 +92,26 @@ const TechReels = memo(() => {
     const [reels, setReels] = useState<Reel[]>([]);
     const [loading, setLoading] = useState(true);
     const [isMuted, setIsMuted] = useState(true);
-    const currentActiveIndex = useRef(0);
-
-    useEffect(() => {
-        fetchReels();
-    }, []);
+    const [activeIndex, setActiveIndex] = useState(0);
+    // Use a ref to track index without re-renders for the wrapper to update parent
+    const activeIndexRef = useRef(0);
 
     const toggleMute = useCallback(() => {
         setIsMuted(prev => !prev);
     }, []);
 
-    const fetchReels = async () => {
+    const fetchReels = useCallback(async () => {
         try {
             const { data, error } = await supabase
                 .from('reels')
                 .select(`
-          *,
-          user:user_id (
-            id,
-            username,
-            avatar_url
-          )
-        `)
+                  *,
+                  user:user_id (
+                    id,
+                    username,
+                    avatar_url
+                  )
+                `)
                 .order('created_at', { ascending: false })
                 .limit(10);
 
@@ -138,7 +132,18 @@ const TechReels = memo(() => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchReels();
+    }, [fetchReels]);
+
+    const handleIndexChange = useCallback((index: number) => {
+        if (activeIndexRef.current !== index) {
+            activeIndexRef.current = index;
+            setActiveIndex(index);
+        }
+    }, []);
 
     return (
         <div className="h-[100dvh] bg-black text-white flex flex-col overflow-hidden">
@@ -166,14 +171,13 @@ const TechReels = memo(() => {
                     </div>
                 ) : (
                     reels.map((reel, index) => {
-                        // Preload the current and next 2 reels
-                        const shouldPreload = index >= currentActiveIndex.current && index <= currentActiveIndex.current + 2;
+                        const shouldPreload = index >= activeIndex && index <= activeIndex + 2;
                         return (
                             <ReelWrapper
                                 key={reel.id}
                                 reel={reel}
                                 index={index}
-                                currentActiveIndex={currentActiveIndex}
+                                onInView={handleIndexChange}
                                 isMuted={isMuted}
                                 shouldPreload={shouldPreload}
                             />

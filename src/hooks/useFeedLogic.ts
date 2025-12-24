@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -67,40 +67,28 @@ export const useFeedLogic = () => {
         return () => subscription.unsubscribe();
     }, [navigate]);
 
-    const fetchUserProfile = async (userId: string) => {
+    const fetchUserProfile = useCallback(async (userId: string) => {
         const { data, error } = await supabase
             .from('profiles')
             .select('xp, level, current_streak')
             .eq('id', userId)
-            .single();
+            .maybeSingle();
 
         if (!error && data) {
-            setUserProfile(data);
+            setUserProfile(data as any);
         }
-    };
+    }, []);
 
     const fetchPosts = useCallback(async () => {
         try {
-            if (pageRef.current === 0) {
-                // setLoading(true); // Don't reset loading on pagination to prevent flicker
-            }
-
             const { data, error } = await supabase
                 .from('posts')
-                .select(`
-          *,
-          profiles(username, full_name, avatar_url, is_verified),
-          likes(id, user_id),
-          comments(id),
-          saves(id, user_id)
-        `)
+                .select('*, profiles(username, full_name, avatar_url, is_verified), likes(id, user_id), comments(id), saves(id, user_id)')
                 .order('created_at', { ascending: false })
                 .range(pageRef.current * POSTS_PER_PAGE, (pageRef.current + 1) * POSTS_PER_PAGE - 1);
 
             if (error) throw error;
 
-            // Transform data to match Post interface (especially likes/saves which might be null from join)
-            // The join returns arrays, so we just ensure they exist
             const formattedPosts: Post[] = (data || []).map(post => ({
                 ...post,
                 likes: post.likes || [],
@@ -108,7 +96,6 @@ export const useFeedLogic = () => {
                 saves: post.saves || []
             }));
 
-            // Combine with DEMO posts if it's the first page and we have few real posts
             let allPosts = formattedPosts;
             if (pageRef.current === 0 && formattedPosts.length < 5) {
                 allPosts = [...formattedPosts, ...DEMO_POSTS];
@@ -116,7 +103,6 @@ export const useFeedLogic = () => {
 
             if (pageRef.current === 0) {
                 setPosts(allPosts);
-                // Save to cache
                 savePostsToCache(allPosts.slice(0, 20));
             } else {
                 setPosts(prev => [...prev, ...allPosts]);
@@ -132,7 +118,6 @@ export const useFeedLogic = () => {
                 description: error.message,
                 variant: "destructive",
             });
-            // Fallback to cache if network error
             if (pageRef.current === 0) {
                 const cached = await getPostsFromCache();
                 if (cached) setPosts(cached);
@@ -142,24 +127,22 @@ export const useFeedLogic = () => {
         }
     }, [toast]);
 
-    const fetchUnreadCount = async () => {
+    const fetchUnreadCount = useCallback(async () => {
         const { count } = await supabase
             .from('notifications')
             .select('*', { count: 'exact', head: true })
             .eq('read', false);
         setUnreadCount(count || 0);
-    };
+    }, []);
 
     useEffect(() => {
         if (user) {
-            // Load from cache first
             const loadCache = async () => {
-                const cachedPosts = await getPostsFromCache();
+                const cachedPosts = (await getPostsFromCache()) as any;
                 if (cachedPosts && cachedPosts.length > 0) {
-                    // Sort by date desc
-                    cachedPosts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                    cachedPosts.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
                     setPosts(cachedPosts);
-                    setLoading(false); // Show cached content immediately
+                    setLoading(false);
                 }
             };
             loadCache();
@@ -167,7 +150,6 @@ export const useFeedLogic = () => {
             fetchPosts();
             fetchUnreadCount();
 
-            // Subscribe to realtime updates
             const channel = supabase
                 .channel('posts-changes')
                 .on(
@@ -178,18 +160,16 @@ export const useFeedLogic = () => {
                         table: 'posts'
                     },
                     (payload) => {
-                        // Optimistically add new post to the top if it's not already there
                         const newPost = payload.new as Post;
-                        // Fetch complete post data (including profile)
                         supabase
                             .from('posts')
                             .select(`
-                *,
-                profiles(username, full_name, avatar_url, is_verified),
-                likes(id, user_id),
-                comments(id),
-                saves(id, user_id)
-              `)
+                                *,
+                                profiles(username, full_name, avatar_url, is_verified),
+                                likes(id, user_id),
+                                comments(id),
+                                saves(id, user_id)
+                            `)
                             .eq('id', newPost.id)
                             .single()
                             .then(({ data }) => {
@@ -207,7 +187,6 @@ export const useFeedLogic = () => {
                 )
                 .subscribe();
 
-            // Subscribe to notifications
             const notificationChannel = supabase
                 .channel('notifications-count')
                 .on(
@@ -229,15 +208,13 @@ export const useFeedLogic = () => {
                 supabase.removeChannel(notificationChannel);
             };
         }
-    }, [user, fetchPosts]);
+    }, [user, fetchPosts, fetchUnreadCount]);
 
     const toggleLike = useCallback(async (postId: string, isLiked: boolean) => {
         if (!user) return;
 
-        // Skip database operations for demo posts
         const isDemoPost = postId.startsWith('demo-post-');
 
-        // Optimistic update
         setPosts(currentPosts => currentPosts.map(post => {
             if (post.id === postId) {
                 if (isLiked) {
@@ -251,7 +228,6 @@ export const useFeedLogic = () => {
             return post;
         }));
 
-        // Don't persist demo post interactions
         if (isDemoPost) {
             if (!isLiked) triggerHeartConfetti();
             return;
@@ -276,7 +252,6 @@ export const useFeedLogic = () => {
                     post_id: postId,
                 });
 
-                // Send notification to post owner
                 const { data: postData } = await supabase
                     .from('posts')
                     .select('user_id')
@@ -294,18 +269,15 @@ export const useFeedLogic = () => {
                 description: (error as Error).message,
                 variant: "destructive",
             });
-            fetchPosts(); // Revert on error
+            fetchPosts();
         }
     }, [user, toast, fetchPosts]);
-
 
     const toggleSave = useCallback(async (postId: string, isSaved: boolean) => {
         if (!user) return;
 
-        // Skip database operations for demo posts
         const isDemoPost = postId.startsWith('demo-post-');
 
-        // Optimistic update
         setPosts(currentPosts => currentPosts.map(post => {
             if (post.id === postId) {
                 if (isSaved) {
@@ -319,7 +291,6 @@ export const useFeedLogic = () => {
             return post;
         }));
 
-        // Don't persist demo post interactions
         if (isDemoPost) return;
 
         try {
@@ -401,10 +372,10 @@ export const useFeedLogic = () => {
         }
     }, [toast, fetchPosts]);
 
-    const handleLogout = async () => {
+    const handleLogout = useCallback(async () => {
         await supabase.auth.signOut();
         navigate("/");
-    };
+    }, [navigate]);
 
     const loadMore = useCallback(() => {
         if (!loading && hasMore) {
@@ -413,7 +384,7 @@ export const useFeedLogic = () => {
         }
     }, [loading, hasMore, fetchPosts]);
 
-    return {
+    return useMemo(() => ({
         user,
         userProfile,
         posts,
@@ -428,7 +399,7 @@ export const useFeedLogic = () => {
         handleShare,
         handleDeletePost,
         handleLogout
-    };
+    }), [user, userProfile, posts, loading, hasMore, unreadCount, loadMore, fetchPosts, toggleLike, toggleSave, handleShare, handleDeletePost, handleLogout]);
 };
 
 export type { Post };

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect, useCallback, memo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,7 @@ interface EditProfileDialogProps {
   onUpdate: () => void;
 }
 
-export const EditProfileDialog = ({ open, onOpenChange, profile, userId, onUpdate }: EditProfileDialogProps) => {
+const EditProfileDialogComponent = ({ open, onOpenChange, profile, userId, onUpdate }: EditProfileDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     full_name: profile?.full_name || "",
@@ -54,11 +54,14 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, userId, onUpdat
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
       let avatarUrl = profile?.avatar_url;
 
       // Upload avatar file if changed
@@ -77,13 +80,16 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, userId, onUpdat
         }
 
         const fileExt = compressedFile.name.split('.').pop();
-        // Use a unique name to avoid RLS update issues and force cache refresh
-        const fileName = `${userId}/avatar_${Date.now()}.${fileExt}`;
+        // Standardized path: bucket/[userId]/[filename]
+        const fileName = `${user.id}/avatar_${Date.now()}.${fileExt}`;
 
-        console.log('Uploading avatar to:', fileName);
+        console.log('Uploading avatar for user:', user.id, 'to bucket: post_images');
         const { error: uploadError } = await supabase.storage
-          .from('post-images')
-          .upload(fileName, compressedFile);
+          .from('post_images')
+          .upload(fileName, compressedFile, {
+            upsert: true,
+            contentType: compressedFile.type
+          });
 
         if (uploadError) {
           console.error('Avatar upload error:', uploadError);
@@ -91,7 +97,7 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, userId, onUpdat
         }
 
         const { data: { publicUrl } } = supabase.storage
-          .from('post-images')
+          .from('post_images')
           .getPublicUrl(fileName);
 
         avatarUrl = publicUrl;
@@ -115,13 +121,15 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, userId, onUpdat
         }
 
         const fileExt = compressedFile.name.split('.').pop();
-        // Use a unique name to avoid RLS update issues and force cache refresh
-        const fileName = `${userId}/banner_${Date.now()}.${fileExt}`;
+        const fileName = `${user.id}/banner_${Date.now()}.${fileExt}`;
 
-        console.log('Uploading banner to:', fileName);
+        console.log('Uploading banner for user:', user.id, 'to bucket: post_images');
         const { error: uploadError } = await supabase.storage
-          .from('post-images')
-          .upload(fileName, compressedFile);
+          .from('post_images')
+          .upload(fileName, compressedFile, {
+            upsert: true,
+            contentType: compressedFile.type
+          });
 
         if (uploadError) {
           console.error('Banner upload error:', uploadError);
@@ -129,7 +137,7 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, userId, onUpdat
         }
 
         const { data: { publicUrl } } = supabase.storage
-          .from('post-images')
+          .from('post_images')
           .getPublicUrl(fileName);
 
         bannerUrl = publicUrl;
@@ -139,7 +147,7 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, userId, onUpdat
       const { error } = await supabase
         .from('profiles')
         .upsert({
-          id: userId,
+          id: user.id,
           full_name: formData.full_name,
           username: formData.username,
           bio: formData.bio,
@@ -172,7 +180,7 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, userId, onUpdat
     } finally {
       setLoading(false);
     }
-  };
+  }, [profile, avatarFile, bannerFile, formData, onUpdate, onOpenChange, toast]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -379,3 +387,5 @@ export const EditProfileDialog = ({ open, onOpenChange, profile, userId, onUpdat
     </Dialog >
   );
 };
+
+export const EditProfileDialog = memo(EditProfileDialogComponent);

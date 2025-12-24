@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Heart, MessageCircle, FileText, Target } from "lucide-react";
 import { motion } from "framer-motion";
@@ -9,7 +10,7 @@ interface StatsCardProps {
   projectsCount: number;
 }
 
-export const ProfileStatsCard = ({ postsCount, likesReceived, commentsReceived, projectsCount }: StatsCardProps) => {
+export const ProfileStatsCard = memo(({ postsCount, likesReceived, commentsReceived, projectsCount }: StatsCardProps) => {
   const stats = [
     {
       label: "Posts",
@@ -60,4 +61,6 @@ export const ProfileStatsCard = ({ postsCount, likesReceived, commentsReceived, 
       </CardContent>
     </Card>
   );
-};
+});
+
+ProfileStatsCard.displayName = "ProfileStatsCard";

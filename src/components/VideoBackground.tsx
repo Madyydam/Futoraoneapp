@@ -21,6 +21,7 @@ const VideoBackground = memo(({ videoSrc, aiGender }: VideoBackgroundProps) => {
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.5 }}
                         className="h-full w-full object-cover"
+                        style={{ willChange: "opacity" }}
                         alt="AI Background"
                     />
                 ) : (
@@ -35,6 +36,7 @@ const VideoBackground = memo(({ videoSrc, aiGender }: VideoBackgroundProps) => {
                         muted
                         playsInline
                         className="h-full w-full object-cover"
+                        style={{ willChange: "opacity" }}
                         poster={aiGender === "female" ? "/ai-3d-model.png" : "/arjun-avatar.png"}
                     >
                         <source src={videoSrc} type="video/mp4" />
