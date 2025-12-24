@@ -228,13 +228,10 @@ export const useFeedLogic = () => {
 
         setPosts(currentPosts => currentPosts.map(post => {
             if (post.id === postId) {
-                if (isLiked) {
-                    const newLikes = post.likes ? post.likes.filter(like => like.user_id !== user.id) : [];
-                    return { ...post, likes: newLikes };
-                } else {
-                    const newLikes = post.likes ? [...post.likes, { id: 'temp-id', user_id: user.id }] : [{ id: 'temp-id', user_id: user.id }];
-                    return { ...post, likes: newLikes };
-                }
+                const newLikes = isLiked
+                    ? (post.likes || []).filter(like => like.user_id !== user.id)
+                    : [...(post.likes || []), { id: 'temp-id', user_id: user.id }];
+                return { ...post, likes: newLikes };
             }
             return post;
         }));
@@ -270,14 +267,14 @@ export const useFeedLogic = () => {
                     .maybeSingle();
 
                 if (postData && postData.user_id !== user.id) {
-                    const actorName = user.user_metadata.full_name || user.email?.split('@')[0] || "Someone";
+                    const actorName = user.user_metadata?.full_name || user.email?.split('@')[0] || "Someone";
                     await sendPushNotification(postData.user_id, `${actorName} liked your post`);
                 }
             }
         } catch (error: any) {
             toast({
                 title: "Error",
-                description: (error as Error).message,
+                description: error.message,
                 variant: "destructive",
             });
             fetchPosts();
@@ -291,13 +288,10 @@ export const useFeedLogic = () => {
 
         setPosts(currentPosts => currentPosts.map(post => {
             if (post.id === postId) {
-                if (isSaved) {
-                    const newSaves = post.saves ? post.saves.filter(save => save.user_id !== user.id) : [];
-                    return { ...post, saves: newSaves };
-                } else {
-                    const newSaves = post.saves ? [...post.saves, { id: 'temp-id', user_id: user.id }] : [{ id: 'temp-id', user_id: user.id }];
-                    return { ...post, saves: newSaves };
-                }
+                const newSaves = isSaved
+                    ? (post.saves || []).filter(save => save.user_id !== user.id)
+                    : [...(post.saves || []), { id: 'temp-id', user_id: user.id }];
+                return { ...post, saves: newSaves };
             }
             return post;
         }));
@@ -329,7 +323,7 @@ export const useFeedLogic = () => {
                     .maybeSingle();
 
                 if (postData && postData.user_id !== user.id) {
-                    const actorName = user.user_metadata.full_name || user.email?.split('@')[0] || "Someone";
+                    const actorName = user.user_metadata?.full_name || user.email?.split('@')[0] || "Someone";
                     sendPushNotification(postData.user_id, `${actorName} saved your post`).catch(console.error);
                 }
             }
@@ -373,7 +367,7 @@ export const useFeedLogic = () => {
                 title: "Post deleted",
                 description: "Your post has been deleted successfully.",
             });
-            fetchPosts();
+            setPosts(prev => prev.filter(post => post.id !== postId));
         } catch (error: any) {
             toast({
                 title: "Error",
@@ -381,7 +375,7 @@ export const useFeedLogic = () => {
                 variant: "destructive",
             });
         }
-    }, [toast, fetchPosts]);
+    }, [toast]);
 
     const handleLogout = useCallback(async () => {
         await supabase.auth.signOut();

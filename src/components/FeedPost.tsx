@@ -176,8 +176,8 @@ export const FeedPost = memo(({ post, currentUser, onLike, onSave, onShare, onDe
                 src={post.image_url}
                 alt="Post"
                 className="w-full rounded-2xl object-cover mb-4 cursor-pointer shadow-md"
-                loading={index < 2 ? "eager" : "lazy"}
-                {...({ fetchpriority: index < 2 ? "high" : "auto" } as any)}
+                loading={index < 3 ? "eager" : "lazy"}
+                {...({ fetchpriority: index < 3 ? "high" : "auto" } as any)}
                 decoding="async"
                 onClick={() => setLightboxOpen(true)}
                 whileHover={{ scale: 1.01 }}

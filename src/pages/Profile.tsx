@@ -280,7 +280,7 @@ const Profile = () => {
                     }`}>
                     <Avatar className={`h-24 w-24 border-4 ${profile?.verification_category === 'creator' ? "border-white" : "border-background"}
                       }`}>
-                      <AvatarImage src={profile?.avatar_url || undefined} loading="lazy" />
+                      <AvatarImage src={profile?.avatar_url || undefined} loading="eager" />
                       <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
                         {profile?.full_name?.[0] || user?.email?.[0]?.toUpperCase()}
                       </AvatarFallback>

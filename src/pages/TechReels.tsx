@@ -64,7 +64,7 @@ const ReelWrapper = memo(({ reel, index, onInView, isMuted, shouldPreload = fals
     shouldPreload?: boolean;
 }) => {
     const { ref, inView } = useInView({
-        threshold: 0.75,
+        threshold: 0.6,
         triggerOnce: false,
     });
 
