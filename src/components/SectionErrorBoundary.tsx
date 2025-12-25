@@ -59,13 +59,13 @@ class SectionErrorBoundaryClass extends Component<Props & { navigate: (path: str
 
                         <div className="space-y-3">
                             <h2 className="text-xl font-bold tracking-tight text-foreground">
-                                {this.props.sectionName} में दिक्कत!
+                                {this.props.sectionName} mein dikkat!
                             </h2>
                             <p className="text-muted-foreground leading-relaxed">
-                                कुछ गड़बड़ हो गई, पर tension नहीं! 😊
+                                Kuch gadbad ho gayi, par tension nahi! 😊
                             </p>
                             <p className="text-sm text-muted-foreground font-medium">
-                                Refresh करो या Home वापस जाओ
+                                Refresh karo ya Home wapas jao
                             </p>
                         </div>
 
@@ -83,7 +83,7 @@ class SectionErrorBoundaryClass extends Component<Props & { navigate: (path: str
                                 className="flex-1 gradient-primary text-white font-semibold py-5 shadow-lg hover:shadow-xl transition-all"
                             >
                                 <RefreshCcw className="mr-2 h-4 w-4" />
-                                Refresh करो
+                                Refresh karo
                             </Button>
                             <Button
                                 onClick={this.handleGoBack}
@@ -91,7 +91,7 @@ class SectionErrorBoundaryClass extends Component<Props & { navigate: (path: str
                                 className="flex-1 font-semibold py-5"
                             >
                                 <Home className="mr-2 h-4 w-4" />
-                                Home जाओ
+                                Home jao
                             </Button>
                         </div>
                     </div>

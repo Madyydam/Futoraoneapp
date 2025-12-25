@@ -101,24 +101,24 @@ export class GlobalErrorBoundary extends Component<Props, State> {
 
         if (retryCount > 0) {
             return {
-                title: "फिर से कोशिश कर रहे हैं...",
-                description: "रुको ज़रा, सब ठीक हो जायेगा! 🔄",
-                subtitle: `कोशिश ${retryCount}/${this.maxRetries}`,
+                title: "Phir se koshish kar rahe hain...",
+                description: "Ruko zara, sab theek ho jayega! 🔄",
+                subtitle: `Koshish ${retryCount}/${this.maxRetries}`,
             };
         }
 
         switch (errorType) {
             case 'chunk':
                 return {
-                    title: "कुछ गलत हो गया!",
-                    description: "App update हो गयी होगी, बस refresh करना पड़ेगा 🔄",
-                    subtitle: "एक click में सब ठीक!",
+                    title: "Kuch galat ho gaya!",
+                    description: "App update ho gayi hogi, bas refresh karna padega 🔄",
+                    subtitle: "Ek click mein sab theek!",
                 };
             case 'network':
                 return {
-                    title: "Internet का झमेला!",
-                    description: "Connection check करो और refresh मारो 📶",
-                    subtitle: "Network ठीक करके फिर से try करें!",
+                    title: "Internet ka jhamela!",
+                    description: "Connection check karo aur refresh maaro 📶",
+                    subtitle: "Network theek karke phir se try karo!",
                 };
             case 'render':
                 return {
@@ -128,7 +128,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
                 };
             default:
                 return {
-                    title: "अरे, कुछ गड़बड़ है!",
+                    title: "Arre, kuch gadbad hai!",
                     description: "Tension mat lo, refresh se sab theek ho jayega 🚀",
                     subtitle: "Bas ek baar refresh kar do!",
                 };
@@ -179,10 +179,10 @@ export class GlobalErrorBoundary extends Component<Props, State> {
                                 className="w-full gradient-primary text-white font-semibold py-6 text-lg shadow-lg hover:shadow-xl transition-all"
                             >
                                 <RefreshCcw className="mr-2 h-5 w-5" />
-                                Refresh करो
+                                Refresh karo
                             </Button>
                             <p className="text-xs text-muted-foreground">
-                                अगर problem बनी रहे तो browser cache clear कर दो
+                                Agar problem bani rahe to browser cache clear kar do
                             </p>
                         </div>
                     </div>
