@@ -32,12 +32,18 @@ class SectionErrorBoundaryClass extends Component<Props & { navigate: (path: str
     }
 
     private handleRefresh = () => {
+        // Skip state update if already in non-error state
+        if (!this.state.hasError) return;
+
         // Reset error state and try again
         this.setState({ hasError: false, error: null });
         window.location.reload();
     };
 
     private handleGoBack = () => {
+        // Skip if already in non-error state
+        if (!this.state.hasError) return;
+
         const route = this.props.fallbackRoute || "/feed";
         this.props.navigate(route);
         // Reset error state
@@ -103,12 +109,18 @@ class SectionErrorBoundaryClass extends Component<Props & { navigate: (path: str
     }
 }
 
-// Wrapper component to use hooks
-export const SectionErrorBoundary: React.FC<Omit<Props, 'navigate'>> = ({ children, sectionName, fallbackRoute }) => {
+// Wrapper component to use hooks - memoized to prevent unnecessary re-renders
+export const SectionErrorBoundary: React.FC<Omit<Props, 'navigate'>> = React.memo(({ children, sectionName, fallbackRoute }) => {
     const navigate = useNavigate();
+
+    // Memoize navigate to ensure stable reference
+    const stableNavigate = React.useCallback((path: string) => {
+        navigate(path);
+    }, [navigate]);
+
     return (
-        <SectionErrorBoundaryClass sectionName={sectionName} fallbackRoute={fallbackRoute} navigate={navigate}>
+        <SectionErrorBoundaryClass sectionName={sectionName} fallbackRoute={fallbackRoute} navigate={stableNavigate}>
             {children}
         </SectionErrorBoundaryClass>
     );
-};
+});

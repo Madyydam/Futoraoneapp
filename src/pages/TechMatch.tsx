@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -91,8 +92,12 @@ const MOCK_PROFILES: SwipeProfile[] = [
     }
 ];
 
+// Common tech skills for filter - moved outside to prevent recreation
+const AVAILABLE_SKILLS = ["React", "Node.js", "Python", "TypeScript", "Design", "Flutter", "Rust", "Go", "AWS", "AI/ML"];
+
 const TechMatch = () => {
     const { toast } = useToast();
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState("find-devs");
     const [aiGender, setAiGender] = useState<AIGender>('female');
     const [messages, setMessages] = useState<Message[]>([
@@ -116,19 +121,16 @@ const TechMatch = () => {
 
     const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
     const [filterDialogOpen, setFilterDialogOpen] = useState(false);
-
-    // Common tech skills for filter
-    const AVAILABLE_SKILLS = ["React", "Node.js", "Python", "TypeScript", "Design", "Flutter", "Rust", "Go", "AWS", "AI/ML"];
-
-    const toggleSkill = (skill: string) => {
+    // Memoize toggleSkill to prevent recreation
+    const toggleSkill = useCallback((skill: string) => {
         setSelectedSkills(prev =>
             prev.includes(skill)
                 ? prev.filter(s => s !== skill)
                 : [...prev, skill]
         );
-    };
+    }, []);
 
-    // Fetch potential matches
+    // Fetch potential matches - optimized dependency array
     useEffect(() => {
         const fetchProfiles = async () => {
             const { data: { user } } = await supabase.auth.getUser();
@@ -184,7 +186,7 @@ const TechMatch = () => {
             fetchProfiles();
             getCurrentUser();
         }
-    }, [activeTab, selectedSkills, toast]); // Re-run when skills change
+    }, [activeTab, selectedSkills]); // Removed toast from dependencies
 
     // Quick Confetti function - Memoized
     const triggerConfetti = useCallback(() => {

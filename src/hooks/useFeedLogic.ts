@@ -226,6 +226,7 @@ export const useFeedLogic = () => {
 
         const isDemoPost = postId.startsWith('demo-post-');
 
+        // Optimistic update with functional state
         setPosts(currentPosts => currentPosts.map(post => {
             if (post.id === postId) {
                 const newLikes = isLiked
@@ -268,24 +269,35 @@ export const useFeedLogic = () => {
 
                 if (postData && postData.user_id !== user.id) {
                     const actorName = user.user_metadata?.full_name || user.email?.split('@')[0] || "Someone";
-                    await sendPushNotification(postData.user_id, `${actorName} liked your post`);
+                    sendPushNotification(postData.user_id, `${actorName} liked your post`).catch(console.error);
                 }
             }
         } catch (error: any) {
+            console.error('Like error:', error);
+            // Revert optimistic update on error
+            setPosts(currentPosts => currentPosts.map(post => {
+                if (post.id === postId) {
+                    const newLikes = !isLiked
+                        ? (post.likes || []).filter(like => like.user_id !== user.id)
+                        : [...(post.likes || []), { id: 'temp-id', user_id: user.id }];
+                    return { ...post, likes: newLikes };
+                }
+                return post;
+            }));
             toast({
                 title: "Error",
                 description: error.message,
                 variant: "destructive",
             });
-            fetchPosts();
         }
-    }, [user, toast, fetchPosts]);
+    }, [user, toast]);
 
     const toggleSave = useCallback(async (postId: string, isSaved: boolean) => {
         if (!user) return;
 
         const isDemoPost = postId.startsWith('demo-post-');
 
+        // Optimistic update with functional state
         setPosts(currentPosts => currentPosts.map(post => {
             if (post.id === postId) {
                 const newSaves = isSaved
@@ -328,14 +340,24 @@ export const useFeedLogic = () => {
                 }
             }
         } catch (error: any) {
+            console.error('Save error:', error);
+            // Revert optimistic update on error
+            setPosts(currentPosts => currentPosts.map(post => {
+                if (post.id === postId) {
+                    const newSaves = !isSaved
+                        ? (post.saves || []).filter(save => save.user_id !== user.id)
+                        : [...(post.saves || []), { id: 'temp-id', user_id: user.id }];
+                    return { ...post, saves: newSaves };
+                }
+                return post;
+            }));
             toast({
                 title: "Error",
                 description: error.message,
                 variant: "destructive",
             });
-            fetchPosts();
         }
-    }, [user, toast, fetchPosts]);
+    }, [user, toast]);
 
     const handleShare = useCallback(async (post: Post) => {
         const shareData = {

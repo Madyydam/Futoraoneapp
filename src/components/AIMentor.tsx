@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Bot, 
-  Send, 
-  X, 
-  Sparkles, 
-  Code, 
-  Lightbulb, 
+import {
+  Bot,
+  Send,
+  X,
+  Sparkles,
+  Code,
+  Lightbulb,
   MessageSquare,
   Loader2,
   Trash2,
@@ -85,11 +85,10 @@ const AIMentor = () => {
             initial={{ opacity: 0, y: 100, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 100, scale: 0.9 }}
-            className={`fixed z-50 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col ${
-              isExpanded 
-                ? 'inset-4 md:inset-8' 
+            className={`fixed z-50 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col ${isExpanded
+                ? 'inset-4 md:inset-8'
                 : 'bottom-24 right-4 w-[calc(100%-2rem)] md:w-96 h-[500px] max-h-[70vh]'
-            }`}
+              }`}
           >
             {/* Header */}
             <div className="bg-gradient-to-r from-primary to-blue-600 p-4 text-white">
@@ -130,18 +129,17 @@ const AIMentor = () => {
                   </Button>
                 </div>
               </div>
-              
+
               {/* Mode Selector */}
               <div className="flex gap-2 mt-3">
                 {(['mentor', 'enhance', 'ideas'] as const).map((m) => (
                   <button
                     key={m}
                     onClick={() => setMode(m)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                      mode === m 
-                        ? 'bg-white text-primary' 
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${mode === m
+                        ? 'bg-white text-primary'
                         : 'bg-white/20 hover:bg-white/30'
-                    }`}
+                      }`}
                   >
                     {m === 'mentor' ? '💡 Mentor' : m === 'enhance' ? '✨ Enhance' : '🚀 Ideas'}
                   </button>
@@ -162,7 +160,7 @@ const AIMentor = () => {
                       Ask me anything about code, tech, or get project ideas!
                     </p>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <p className="text-xs text-muted-foreground uppercase tracking-wide">Quick prompts</p>
                     {quickPrompts.map((prompt, i) => (
@@ -192,11 +190,10 @@ const AIMentor = () => {
                       className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
-                        className={`max-w-[85%] p-3 rounded-2xl ${
-                          msg.role === 'user'
+                        className={`max-w-[85%] p-3 rounded-2xl ${msg.role === 'user'
                             ? 'bg-primary text-primary-foreground rounded-br-md'
                             : 'bg-secondary text-secondary-foreground rounded-bl-md'
-                        }`}
+                          }`}
                       >
                         <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
                       </div>
@@ -230,18 +227,18 @@ const AIMentor = () => {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder={
-                    mode === 'mentor' 
-                      ? "Ask me anything about tech..." 
-                      : mode === 'enhance' 
+                    mode === 'mentor'
+                      ? "Ask me anything about tech..."
+                      : mode === 'enhance'
                         ? "Paste your post content to enhance..."
                         : "Tell me your skills for project ideas..."
                   }
                   className="min-h-[44px] max-h-32 resize-none bg-secondary/50"
                   disabled={isLoading}
                 />
-                <Button 
-                  type="submit" 
-                  size="icon" 
+                <Button
+                  type="submit"
+                  size="icon"
                   disabled={!input.trim() || isLoading}
                   className="shrink-0"
                 >
@@ -269,4 +266,4 @@ const AIMentor = () => {
   );
 };
 
-export default AIMentor;
+export default React.memo(AIMentor);

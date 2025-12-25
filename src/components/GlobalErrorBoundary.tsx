@@ -11,6 +11,11 @@ interface State {
     error: Error | null;
     errorType: 'chunk' | 'render' | 'network' | 'unknown';
     retryCount: number;
+    cachedMessage?: {
+        title: string;
+        description: string;
+        subtitle: string;
+    };
 }
 
 export class GlobalErrorBoundary extends Component<Props, State> {
@@ -21,6 +26,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
         error: null,
         errorType: 'unknown',
         retryCount: 0,
+        cachedMessage: undefined,
     };
 
     public static getDerivedStateFromError(error: Error): Partial<State> {
@@ -46,14 +52,20 @@ export class GlobalErrorBoundary extends Component<Props, State> {
         // Auto-retry for chunk loading errors (common during deployments)
         if (this.state.errorType === 'chunk' && this.state.retryCount < this.maxRetries) {
             console.log(`ChunkLoadError detected, auto-retrying (${this.state.retryCount + 1}/${this.maxRetries})...`);
-            this.setState(prev => ({ ...prev, retryCount: prev.retryCount + 1 }));
+
+            // Use functional state update to increment retry count
+            this.setState(prev => ({
+                ...prev,
+                retryCount: prev.retryCount + 1,
+                cachedMessage: undefined // Clear cache for new message
+            }));
 
             setTimeout(() => {
                 // Clear any cached modules
                 if ('caches' in window) {
                     caches.keys().then(names => {
                         names.forEach(name => caches.delete(name));
-                    });
+                    }).catch(() => { }); // Silently handle cache errors
                 }
                 window.location.reload();
             }, 1000);
@@ -97,42 +109,56 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     };
 
     private getErrorMessage() {
-        const { errorType, retryCount } = this.state;
+        const { errorType, retryCount, cachedMessage } = this.state;
+
+        // Return cached message if errorType and retryCount haven't changed
+        if (cachedMessage) {
+            return cachedMessage;
+        }
+
+        let message;
 
         if (retryCount > 0) {
-            return {
+            message = {
                 title: "Phir se koshish kar rahe hain...",
                 description: "Ruko zara, sab theek ho jayega! 🔄",
                 subtitle: `Koshish ${retryCount}/${this.maxRetries}`,
             };
+        } else {
+            switch (errorType) {
+                case 'chunk':
+                    message = {
+                        title: "Kuch galat ho gaya!",
+                        description: "App update ho gayi hogi, bas refresh karna padega 🔄",
+                        subtitle: "Ek click mein sab theek!",
+                    };
+                    break;
+                case 'network':
+                    message = {
+                        title: "Internet ka jhamela!",
+                        description: "Connection check karo aur refresh maaro 📶",
+                        subtitle: "Network theek karke phir se try karo!",
+                    };
+                    break;
+                case 'render':
+                    message = {
+                        title: "कुछ गलत हो गया!",
+                        description: "Badi mushkil se bani hoon, time lagega na 😄",
+                        subtitle: "Ek refresh aur ho jaaye!",
+                    };
+                    break;
+                default:
+                    message = {
+                        title: "Arre, kuch gadbad hai!",
+                        description: "Tension mat lo, refresh se sab theek ho jayega 🚀",
+                        subtitle: "Bas ek baar refresh kar do!",
+                    };
+            }
         }
 
-        switch (errorType) {
-            case 'chunk':
-                return {
-                    title: "Kuch galat ho gaya!",
-                    description: "App update ho gayi hogi, bas refresh karna padega 🔄",
-                    subtitle: "Ek click mein sab theek!",
-                };
-            case 'network':
-                return {
-                    title: "Internet ka jhamela!",
-                    description: "Connection check karo aur refresh maaro 📶",
-                    subtitle: "Network theek karke phir se try karo!",
-                };
-            case 'render':
-                return {
-                    title: "कुछ गलत हो गया!",
-                    description: "Badi mushkil se bani hoon, time lagega na 😄",
-                    subtitle: "Ek refresh aur ho jaaye!",
-                };
-            default:
-                return {
-                    title: "Arre, kuch gadbad hai!",
-                    description: "Tension mat lo, refresh se sab theek ho jayega 🚀",
-                    subtitle: "Bas ek baar refresh kar do!",
-                };
-        }
+        // Cache the message for future renders
+        this.state.cachedMessage = message;
+        return message;
     }
 
     public render() {

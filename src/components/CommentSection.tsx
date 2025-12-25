@@ -28,6 +28,47 @@ interface CommentSectionProps {
     currentUser: User | null;
 }
 
+interface CommentItemProps {
+    comment: Comment;
+    currentUser: User | null;
+    onDelete: (commentId: string) => void;
+}
+
+// Memoized comment item to prevent re-renders
+const CommentItem = React.memo(({ comment, currentUser, onDelete }: CommentItemProps) => (
+    <Card className="p-3">
+        <div className="flex items-start gap-3">
+            <Avatar className="h-8 w-8">
+                <AvatarImage src={comment.profiles.avatar_url || undefined} />
+                <AvatarFallback>{comment.profiles.username[0]}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <p className="font-semibold text-sm">{comment.profiles.full_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                            @{comment.profiles.username} · {new Date(comment.created_at).toLocaleDateString()}
+                        </p>
+                    </div>
+                    {currentUser?.id === comment.user_id && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => onDelete(comment.id)}
+                        >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                    )}
+                </div>
+                <p className="text-sm mt-1">{comment.content}</p>
+            </div>
+        </div>
+    </Card>
+));
+
+CommentItem.displayName = "CommentItem";
+
 export const CommentSection = ({ postId, postAuthorId, currentUser }: CommentSectionProps) => {
     const [comments, setComments] = useState<Comment[]>([]);
     const [newComment, setNewComment] = useState("");
@@ -163,35 +204,12 @@ export const CommentSection = ({ postId, postAuthorId, currentUser }: CommentSec
             {comments.length > 0 && (
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                     {comments.map((comment) => (
-                        <Card key={comment.id} className="p-3">
-                            <div className="flex items-start gap-3">
-                                <Avatar className="h-8 w-8">
-                                    <AvatarImage src={comment.profiles.avatar_url || undefined} />
-                                    <AvatarFallback>{comment.profiles.username[0]}</AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="font-semibold text-sm">{comment.profiles.full_name}</p>
-                                            <p className="text-xs text-muted-foreground">
-                                                @{comment.profiles.username} · {new Date(comment.created_at).toLocaleDateString()}
-                                            </p>
-                                        </div>
-                                        {currentUser?.id === comment.user_id && (
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8"
-                                                onClick={() => handleDeleteComment(comment.id)}
-                                            >
-                                                <Trash2 className="h-4 w-4 text-destructive" />
-                                            </Button>
-                                        )}
-                                    </div>
-                                    <p className="text-sm mt-1">{comment.content}</p>
-                                </div>
-                            </div>
-                        </Card>
+                        <CommentItem
+                            key={comment.id}
+                            comment={comment}
+                            currentUser={currentUser}
+                            onDelete={handleDeleteComment}
+                        />
                     ))}
                 </div>
             )}
